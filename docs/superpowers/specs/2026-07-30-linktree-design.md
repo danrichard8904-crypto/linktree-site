@@ -18,7 +18,7 @@ Single screen, no scroll on mobile:
    - **TikTok** (secondary button)
    - **Text Me** (secondary button)
 
-**All four buttons ship with placeholder `href="#"` links at launch.** None of the real destinations (booking app URL, Instagram handle, TikTok handle, phone number) exist yet or were provided. Links are wired up incrementally, one at a time, as each destination becomes available — this is an explicit, intentional launch state, not a gap to fill before shipping.
+**All four are `<a href="#">` tags styled as buttons, not `<button>` elements** — the mockup used `<button>` for the static visual, but real navigation (opening Instagram, dialing a phone, linking to the booking app) requires anchor tags. Placeholder `href="#"` at launch. None of the real destinations (booking app URL, Instagram handle, TikTok handle, phone number) exist yet or were provided. Links are wired up incrementally, one at a time, as each destination becomes available — this is an explicit, intentional launch state, not a gap to fill before shipping.
 
 ## Visual Design
 
@@ -43,6 +43,10 @@ Sourced from `design-md/claude/DESIGN.md` (VoltAgent/awesome-design-md), with on
 - Role badge: pill shape (`border-radius: 9999px`), `#efe9de` background, uppercase caption type.
 
 Reference mockup: `docs/superpowers/specs/2026-07-30-linktree-mockup.html` (built and approved during brainstorming, phone-frame preview at 390×760 — open directly in a browser to view).
+
+## Mobile Requirement
+
+This is a phone-first page (that's how it'll actually be viewed — in a bio link). The page **must** include `<meta name="viewport" content="width=device-width, initial-scale=1">`. Without it, mobile browsers render at desktop width and the single-column layout breaks.
 
 ## Technical Approach
 
