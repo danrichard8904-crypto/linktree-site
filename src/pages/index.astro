@@ -1,0 +1,107 @@
+---
+---
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dan — Barber / Stylist</title>
+  </head>
+  <body>
+    <main class="card">
+      <div class="avatar"></div>
+      <h1 class="name">Dan</h1>
+      <span class="badge">Barber / Stylist</span>
+      <p class="bio">Booth renter · walk-ins by appointment only</p>
+      <nav class="links">
+        <a href="#" class="btn btn-primary">Book an Appointment</a>
+        <a href="#" class="btn btn-secondary">Instagram</a>
+        <a href="#" class="btn btn-secondary">TikTok</a>
+        <a href="#" class="btn btn-secondary">Text Me</a>
+      </nav>
+    </main>
+  </body>
+</html>
+
+<style>
+  :global(body) {
+    margin: 0;
+    background: #faf9f5;
+    font-family: Inter, -apple-system, 'Segoe UI', sans-serif;
+    display: flex;
+    justify-content: center;
+  }
+  .card {
+    width: 100%;
+    max-width: 420px;
+    min-height: 100vh;
+    padding: 48px 28px 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-sizing: border-box;
+  }
+  .avatar {
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    background: #efe9de;
+    border: 1px solid #e6dfd8;
+    margin-bottom: 16px;
+  }
+  .name {
+    font-family: Georgia, 'Tiempos Headline', 'Times New Roman', serif;
+    font-size: 28px;
+    font-weight: 400;
+    letter-spacing: -0.3px;
+    color: #141413;
+    margin: 0;
+    text-align: center;
+  }
+  .badge {
+    margin-top: 8px;
+    padding: 4px 12px;
+    background: #efe9de;
+    color: #141413;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    border-radius: 9999px;
+  }
+  .bio {
+    margin-top: 14px;
+    font-size: 14px;
+    line-height: 1.55;
+    color: #3d3d3a;
+    text-align: center;
+  }
+  .links {
+    width: 100%;
+    margin-top: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 44px;
+    border-radius: 8px;
+    font-family: Inter, sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    box-sizing: border-box;
+  }
+  .btn-primary {
+    background: #141413;
+    color: #fff;
+  }
+  .btn-secondary {
+    background: #faf9f5;
+    color: #141413;
+    border: 1px solid #e6dfd8;
+  }
+</style>
