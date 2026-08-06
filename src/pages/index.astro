@@ -73,6 +73,7 @@
     min-height: 100vh;
   }
   .card {
+    position: relative;
     width: 100%;
     max-width: 420px;
     min-height: 100vh;
@@ -80,40 +81,39 @@
     flex-direction: column;
     align-items: center;
     box-sizing: border-box;
-  }
-
-  /* Hero — photo-bleed background behind avatar/name/badge/bio */
-  .hero {
-    position: relative;
-    width: 100%;
-    padding: 56px 28px 24px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    box-sizing: border-box;
     overflow: hidden;
   }
-  .hero::before {
+  .card::before {
     content: '';
     position: absolute;
     inset: -20px;
     background-image: url('/linktree-site/photos/IMG_4966.jpg');
     background-size: cover;
     background-position: center;
-    filter: blur(18px) brightness(0.55);
-    transform: scale(1.15);
+    filter: blur(6px) brightness(0.75);
+    transform: scale(1.08);
     z-index: 0;
   }
-  .hero::after {
+  .card::after {
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(to bottom, rgba(20,20,19,0.4) 0%, rgba(20,20,19,0.4) 55%, #faf9f5 100%);
+    background: linear-gradient(180deg, rgba(20,20,19,0.45) 0%, rgba(20,20,19,0.6) 100%);
     z-index: 1;
   }
-  .hero > * {
+  .card > * {
     position: relative;
     z-index: 2;
+  }
+
+  /* Hero — avatar/name/badge/bio, sits on the full-card photo above */
+  .hero {
+    width: 100%;
+    padding: 56px 28px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-sizing: border-box;
   }
 
   .avatar {
@@ -237,9 +237,9 @@
     .card {
       min-height: unset;
       flex: 0 0 380px;
+      border-radius: 20px;
     }
     .hero {
-      border-radius: 20px;
       padding-top: 40px;
     }
     .preview {
