@@ -19,12 +19,12 @@
       </header>
 
       <div class="grid">
-        <div class="slot reveal" style="--i:0"><img src="/linktree-site/photos/IMG_4542.jpg" alt="" /></div>
-        <div class="slot reveal" style="--i:1"><img src="/linktree-site/photos/IMG_4950.jpg" alt="" /></div>
-        <div class="slot reveal" style="--i:2"><img src="/linktree-site/photos/IMG_4966.jpg" alt="" /></div>
-        <div class="slot reveal" style="--i:3"><video src="/linktree-site/photos/IMG_4355.mp4" autoplay muted loop playsinline preload="auto"></video></div>
-        <div class="slot reveal" style="--i:4"><video src="/linktree-site/photos/IMG_4927.mp4" autoplay muted loop playsinline preload="auto"></video></div>
-        <div class="slot reveal" style="--i:5"><video src="/linktree-site/photos/IMG_4999.mp4" autoplay muted loop playsinline preload="auto"></video></div>
+        <div class="slot" style="--i:0"><img src="/linktree-site/photos/IMG_4542.jpg" alt="" /></div>
+        <div class="slot" style="--i:1"><img src="/linktree-site/photos/IMG_4950.jpg" alt="" /></div>
+        <div class="slot" style="--i:2"><img src="/linktree-site/photos/IMG_4966.jpg" alt="" /></div>
+        <div class="slot" style="--i:3"><video src="/linktree-site/photos/IMG_4355.mp4" autoplay muted loop playsinline preload="auto"></video></div>
+        <div class="slot" style="--i:4"><video src="/linktree-site/photos/IMG_4927.mp4" autoplay muted loop playsinline preload="auto"></video></div>
+        <div class="slot" style="--i:5"><video src="/linktree-site/photos/IMG_4999.mp4" autoplay muted loop playsinline preload="auto"></video></div>
       </div>
 
       <footer class="footer">
@@ -131,14 +131,9 @@
     from { opacity: 0; transform: scale(0.88); }
     to   { opacity: 1; transform: scale(1); }
   }
-  .reveal {
-    opacity: 0;
+  .slot {
     animation: pop-in 0.45s ease forwards;
-    animation-play-state: paused;
-    animation-delay: calc(var(--i) % 3 * 80ms);
-  }
-  .reveal.visible {
-    animation-play-state: running;
+    animation-delay: calc(var(--i) * 70ms);
   }
 
   /* Empty state — shown when all slots are placeholders */
@@ -183,10 +178,3 @@
   .insta:hover { color: #141413; }
 </style>
 
-<script>
-  const observer = new IntersectionObserver(
-    (entries) => entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); } }),
-    { threshold: 0.15 }
-  );
-  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
-</script>
