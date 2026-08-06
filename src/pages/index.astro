@@ -119,41 +119,61 @@
     align-items: center;
     justify-content: space-between;
     width: 100%;
-    height: 54px;
-    padding: 0 20px;
+    height: 56px;
+    padding: 0 22px;
     border-radius: 9999px;
     font-family: Inter, -apple-system, 'Segoe UI', sans-serif;
     font-size: 15px;
-    font-weight: 600;
+    font-weight: 700;
+    letter-spacing: 0.2px;
     text-decoration: none;
     box-sizing: border-box;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    /* hard offset shadow = the 3D "raised slab" look */
+    transition: transform 0.1s cubic-bezier(0.34,1.56,0.64,1),
+                box-shadow 0.1s cubic-bezier(0.34,1.56,0.64,1);
     position: relative;
+    cursor: pointer;
   }
-  .btn:active { transform: scale(0.97); }
   .arr {
-    font-size: 16px;
+    font-size: 17px;
     transition: transform 0.2s ease;
   }
-  .btn:hover .arr { transform: translateX(4px); }
+  .btn:hover .arr { transform: translateX(5px); }
+
+  /* Primary — black slab with warm brown 3D shadow */
   .btn-primary {
     background: #141413;
     color: #fff;
-    box-shadow: 0 2px 12px rgba(20,20,19,0.25);
+    border: 2px solid #141413;
+    box-shadow: 5px 5px 0 0 #6b4f3a,
+                0 12px 28px rgba(20,20,19,0.22);
   }
   .btn-primary:hover {
-    box-shadow: 0 4px 20px rgba(20,20,19,0.35);
-    transform: translateY(-1px);
+    transform: translate(-2px, -2px);
+    box-shadow: 7px 7px 0 0 #6b4f3a,
+                0 16px 32px rgba(20,20,19,0.28);
   }
+  .btn-primary:active {
+    transform: translate(4px, 4px);
+    box-shadow: 1px 1px 0 0 #6b4f3a,
+                0 2px 6px rgba(20,20,19,0.15);
+  }
+
+  /* Secondary — cream slab with hard black 3D shadow + outline */
   .btn-secondary {
-    background: transparent;
+    background: #faf9f5;
     color: #141413;
-    border: 1.5px solid #d4cec7;
+    border: 2px solid #141413;
+    box-shadow: 5px 5px 0 0 #141413;
   }
   .btn-secondary:hover {
     background: #efe9de;
-    border-color: #141413;
-    transform: translateY(-1px);
+    transform: translate(-2px, -2px);
+    box-shadow: 7px 7px 0 0 #141413;
+  }
+  .btn-secondary:active {
+    transform: translate(4px, 4px);
+    box-shadow: 1px 1px 0 0 #141413;
   }
   .preview { display: none; }
 
