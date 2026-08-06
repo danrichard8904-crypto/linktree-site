@@ -19,17 +19,22 @@
       </header>
 
       <div class="grid">
-        <!-- Drop images here: replace the placeholder divs with <img src="/linktree-site/photos/your-photo.jpg" alt="..." /> -->
+        <!-- PHOTO slots: replace empty div with <img src="/linktree-site/photos/filename.jpg" alt="" /> -->
         <div class="slot empty"></div>
         <div class="slot empty"></div>
         <div class="slot empty"></div>
+
+        <!-- VIDEO slots: replace empty div with the video element below.
+             Videos autoplay, loop, are muted, and cannot be paused.
+             <video src="/linktree-site/photos/filename.mp4" autoplay muted loop playsinline></video>
+        -->
         <div class="slot empty"></div>
         <div class="slot empty"></div>
         <div class="slot empty"></div>
       </div>
 
       <div class="empty-state">
-        <p>Photos coming soon.</p>
+        <p>Coming soon.</p>
       </div>
 
       <footer class="footer">
@@ -123,11 +128,13 @@
     background: #efe9de;
   }
 
-  .slot img {
+  .slot img,
+  .slot video {
     width: 100%;
     height: 100%;
     object-fit: cover;
     display: block;
+    pointer-events: none; /* prevents tap-to-pause on mobile */
   }
 
   /* Empty state — shown when all slots are placeholders */
