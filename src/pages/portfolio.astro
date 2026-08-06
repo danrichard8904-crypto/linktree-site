@@ -21,10 +21,22 @@
       <div class="grid">
         <div class="slot" style="--i:0"><img src="/linktree-site/photos/IMG_4542.jpg" alt="" /></div>
         <div class="slot" style="--i:1"><img src="/linktree-site/photos/IMG_4950.jpg" alt="" /></div>
-        <div class="slot" style="--i:2"><img src="/linktree-site/photos/IMG_4966.jpg" alt="" /></div>
-        <div class="slot" style="--i:3"><video src="/linktree-site/photos/IMG_4355.mp4" autoplay muted playsinline preload="auto"></video></div>
-        <div class="slot" style="--i:4"><video src="/linktree-site/photos/IMG_4998.mp4" autoplay muted playsinline preload="auto"></video></div>
-        <div class="slot" style="--i:5"><video src="/linktree-site/photos/IMG_5030.mp4" autoplay muted playsinline preload="auto"></video></div>
+        <div class="slot loop-video" style="--i:2" data-src="/linktree-site/photos/IMG_5008.mp4">
+          <video class="v" muted playsinline preload="auto"></video>
+          <video class="v" muted playsinline preload="auto"></video>
+        </div>
+        <div class="slot loop-video" style="--i:3" data-src="/linktree-site/photos/IMG_4355.mp4">
+          <video class="v" muted playsinline preload="auto"></video>
+          <video class="v" muted playsinline preload="auto"></video>
+        </div>
+        <div class="slot loop-video" style="--i:4" data-src="/linktree-site/photos/IMG_4998.mp4">
+          <video class="v" muted playsinline preload="auto"></video>
+          <video class="v" muted playsinline preload="auto"></video>
+        </div>
+        <div class="slot loop-video" style="--i:5" data-src="/linktree-site/photos/IMG_5030.mp4">
+          <video class="v" muted playsinline preload="auto"></video>
+          <video class="v" muted playsinline preload="auto"></video>
+        </div>
       </div>
 
       <section class="bio-section">
@@ -50,14 +62,38 @@
     </main>
 
     <script>
-      // Manual loop to avoid the pink/green corruption glitch at the native loop boundary
-      document.querySelectorAll('video').forEach(v => {
-        v.addEventListener('timeupdate', () => {
-          if (v.duration && v.currentTime >= v.duration - 0.08) {
-            v.currentTime = 0;
-            v.play().catch(() => {});
+      // Seamless loop via dual-buffer crossfade: the visible video is never
+      // seeked (that's what caused the decode corruption at the loop point).
+      // A hidden twin restarts and takes over instead.
+      const SWAP_BEFORE = 0.15;
+
+      document.querySelectorAll('.loop-video').forEach(container => {
+        const src = container.dataset.src;
+        const [a, b] = container.querySelectorAll('video');
+        a.src = src;
+        b.src = src;
+
+        function arm(active, standby) {
+          function onTimeUpdate() {
+            if (active.duration && active.currentTime >= active.duration - SWAP_BEFORE) {
+              active.removeEventListener('timeupdate', onTimeUpdate);
+              standby.currentTime = 0;
+              standby.play().catch(() => {});
+              standby.classList.add('active');
+              active.classList.remove('active');
+              setTimeout(() => {
+                active.pause();
+                active.currentTime = 0;
+              }, 120);
+              arm(standby, active);
+            }
           }
-        });
+          active.addEventListener('timeupdate', onTimeUpdate);
+        }
+
+        a.classList.add('active');
+        a.play().catch(() => {});
+        arm(a, b);
       });
     </script>
   </body>
@@ -147,6 +183,7 @@
   }
 
   .slot {
+    position: relative;
     aspect-ratio: 1;
     overflow: hidden;
     background: #efe9de;
@@ -159,6 +196,15 @@
     object-fit: cover;
     display: block;
     pointer-events: none;
+  }
+
+  .loop-video .v {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+  }
+  .loop-video .v.active {
+    opacity: 1;
   }
 
   @keyframes pop-in {
