@@ -6,6 +6,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Dan — Barber / Stylist</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
+    <link rel="prefetch" href="/linktree-site/photos/dan-cutout.png" as="image">
     <link rel="prefetch" href="/linktree-site/photos/IMG_4355.mp4" as="video">
     <link rel="prefetch" href="/linktree-site/photos/IMG_4998.mp4" as="video">
     <link rel="prefetch" href="/linktree-site/photos/IMG_5030.mp4" as="video">
@@ -16,33 +20,24 @@
   <body>
     <div class="layout">
       <main class="card">
-        <div class="hero">
-          <div class="avatar anim" style="--d:0"></div>
-          <h1 class="name anim" style="--d:1">Dan</h1>
-          <span class="badge anim" style="--d:2">Barber / Stylist</span>
-          <p class="bio anim" style="--d:3">Booth renter · walk-ins by appointment only</p>
-          <div class="social-row anim" style="--d:4">
-            <a href="https://www.instagram.com/Reppstory/" class="icon-btn" target="_blank" rel="noopener" aria-label="Instagram">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8">
-                <rect x="3" y="3" width="18" height="18" rx="5"/>
-                <circle cx="12" cy="12" r="4.2"/>
-                <circle cx="17.2" cy="6.8" r="1.1" fill="currentColor" stroke="none"/>
-              </svg>
-            </a>
-            <a href="#" class="icon-btn" aria-label="TikTok">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                <path d="M14 3c.4 2.2 2 3.8 4.2 4.1v2.6c-1.5-.1-2.9-.6-4.1-1.4v6.4c0 3-2.4 5.3-5.3 5.3S3.5 17.7 3.5 14.8 5.9 9.5 8.8 9.5c.4 0 .8 0 1.2.1v2.7c-.4-.1-.8-.2-1.2-.2-1.5 0-2.7 1.2-2.7 2.7s1.2 2.7 2.7 2.7 2.8-1.2 2.8-2.7V3h2.4z"/>
-              </svg>
-            </a>
+        <div class="poster">
+          <div class="poster-cap poster-cap-left">
+            <span class="cap-label">Barber / Stylist</span>
+            <span class="cap-sub">Booth renter · appt only</span>
+          </div>
+          <div class="poster-cap poster-cap-right">
+            <span class="cap-label">@Reppstory</span>
+          </div>
+          <h1 class="wordmark">DAN</h1>
+          <img class="cutout" src="/linktree-site/photos/dan-cutout.png" alt="Dan" />
+          <a href="/linktree-site/portfolio" class="poster-cta">HAIR<br/>PORTFOLIO</a>
+          <div class="poster-links">
+            <a href="https://www.instagram.com/Reppstory/" target="_blank" rel="noopener">Instagram</a>
+            <a href="#">TikTok</a>
           </div>
         </div>
-        <nav class="links">
-          <a href="/linktree-site/portfolio" class="btn btn-primary anim" style="--d:5">
-            <span>Hair Portfolio</span><span class="arr">→</span>
-          </a>
-        </nav>
       </main>
-      <aside class="preview anim" style="--d:3" aria-hidden="true">
+      <aside class="preview" aria-hidden="true">
         <a href="/linktree-site/portfolio" class="preview-grid" tabindex="-1">
           <img src="/linktree-site/photos/IMG_4542.jpg" alt="" />
           <img src="/linktree-site/photos/IMG_4950.jpg" alt="" />
@@ -58,7 +53,7 @@
 <style>
   :global(body) {
     margin: 0;
-    background: #faf9f5;
+    background: #ffffff;
     font-family: Inter, -apple-system, 'Segoe UI', sans-serif;
     min-height: 100vh;
     display: flex;
@@ -77,151 +72,108 @@
     width: 100%;
     max-width: 420px;
     min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
     box-sizing: border-box;
     overflow: hidden;
+    background: #ffffff;
   }
-  .card::before {
-    content: '';
-    position: absolute;
-    inset: -20px;
-    background-image: url('/linktree-site/photos/IMG_4966.jpg');
-    background-size: cover;
-    background-position: center;
-    filter: blur(6px) brightness(0.75);
-    transform: scale(1.08);
-    z-index: 0;
-  }
-  .card::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(180deg, rgba(20,20,19,0.45) 0%, rgba(20,20,19,0.6) 100%);
-    z-index: 1;
-  }
-  .card > * {
+
+  .poster {
     position: relative;
-    z-index: 2;
-  }
-
-  /* Hero — avatar/name/badge/bio, sits on the full-card photo above */
-  .hero {
     width: 100%;
-    padding: 56px 28px 24px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    box-sizing: border-box;
+    height: 100%;
+    min-height: 100vh;
   }
 
-  .avatar {
-    width: 88px;
-    height: 88px;
-    border-radius: 50%;
-    background: #efe9de;
-    border: 2px solid #faf9f5;
-    margin-bottom: 16px;
-  }
-  .name {
-    font-family: Georgia, 'Tiempos Headline', 'Times New Roman', serif;
-    font-size: 28px;
-    font-weight: 400;
-    letter-spacing: -0.3px;
-    color: #faf9f5;
+  .wordmark {
+    position: absolute;
+    top: 7%;
+    left: 0;
+    right: 0;
     margin: 0;
     text-align: center;
+    font-family: 'Anton', Impact, 'Arial Narrow', sans-serif;
+    font-weight: 400;
+    font-size: clamp(84px, 26vw, 130px);
+    line-height: 0.85;
+    letter-spacing: -2px;
+    color: #f0401c;
+    z-index: 1;
   }
-  .badge {
-    margin-top: 8px;
-    padding: 4px 12px;
-    background: #efe9de;
-    color: #141413;
-    font-size: 12px;
-    font-weight: 500;
-    letter-spacing: 1.5px;
+
+  .cutout {
+    position: relative;
+    z-index: 2;
+    display: block;
+    margin: 20% auto 0;
+    width: 76%;
+    max-width: 320px;
+    height: auto;
+    pointer-events: none;
+  }
+
+  .poster-cap {
+    position: absolute;
+    z-index: 3;
+    font-size: 11px;
+    font-weight: 700;
     text-transform: uppercase;
-    border-radius: 9999px;
-  }
-  .bio {
-    margin-top: 14px;
-    font-size: 14px;
-    line-height: 1.55;
-    color: #a09d96;
-    text-align: center;
-  }
-
-  .social-row {
-    display: flex;
-    gap: 12px;
-    margin-top: 18px;
-  }
-  .icon-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: #faf9f5;
+    letter-spacing: 1px;
+    line-height: 1.4;
     color: #141413;
-    border: 2px solid transparent;
-    transition: border-color 0.15s ease, transform 0.15s ease;
   }
-  .icon-btn:hover {
-    border-color: #e8a55a;
-    transform: translateY(-2px);
+  .poster-cap-left {
+    top: 8%;
+    left: 6%;
+    text-align: left;
+  }
+  .poster-cap-right {
+    top: 8%;
+    right: 6%;
+    text-align: right;
+  }
+  .cap-label { display: block; }
+  .cap-sub {
+    display: block;
+    color: #8e8b82;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+    margin-top: 2px;
   }
 
-  .links {
-    width: 100%;
-    padding: 24px 28px 32px;
-    box-sizing: border-box;
+  .poster-cta {
+    position: absolute;
+    z-index: 3;
+    top: 60%;
+    left: 8%;
+    font-family: 'Anton', Impact, 'Arial Narrow', sans-serif;
+    font-weight: 400;
+    font-size: clamp(30px, 9vw, 42px);
+    line-height: 0.95;
+    letter-spacing: -1px;
+    color: #f0401c;
+    text-decoration: none;
+  }
+
+  .poster-links {
+    position: absolute;
+    z-index: 3;
+    bottom: 6%;
+    right: 6%;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    align-items: flex-end;
+    gap: 8px;
   }
-  .btn {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-    height: 56px;
-    padding: 0 22px;
-    border-radius: 9999px;
-    font-family: Inter, -apple-system, 'Segoe UI', sans-serif;
-    font-size: 15px;
+  .poster-links a {
+    font-size: 11px;
     font-weight: 700;
-    letter-spacing: 0.2px;
-    text-decoration: none;
-    box-sizing: border-box;
-    /* hard offset shadow = the 3D "raised slab" look */
-    transition: transform 0.1s cubic-bezier(0.34,1.56,0.64,1),
-                box-shadow 0.1s cubic-bezier(0.34,1.56,0.64,1);
-    position: relative;
-    cursor: pointer;
-  }
-  .arr {
-    font-size: 17px;
-    transition: transform 0.2s ease;
-  }
-  .btn:hover .arr { transform: translateX(5px); }
-
-  /* Primary — amber slab with hard black 3D shadow */
-  .btn-primary {
-    background: #e8a55a;
+    text-transform: uppercase;
+    letter-spacing: 1px;
     color: #141413;
-    border: 2px solid #141413;
-    box-shadow: 5px 5px 0 0 #141413;
-  }
-  .btn-primary:hover {
-    transform: translate(-2px, -2px);
-    box-shadow: 7px 7px 0 0 #141413;
-  }
-  .btn-primary:active {
-    transform: translate(4px, 4px);
-    box-shadow: 1px 1px 0 0 #141413;
+    text-decoration: none;
+    border-bottom: 2px solid #f0401c;
+    padding-bottom: 2px;
   }
 
   .preview { display: none; }
@@ -236,12 +188,12 @@
     }
     .card {
       min-height: unset;
+      height: 780px;
       flex: 0 0 380px;
       border-radius: 20px;
+      border: 1px solid #ececec;
     }
-    .hero {
-      padding-top: 40px;
-    }
+    .poster { min-height: unset; height: 100%; }
     .preview {
       display: flex;
       flex-direction: column;
@@ -275,15 +227,5 @@
       margin: 0;
       text-align: center;
     }
-  }
-
-  @keyframes rise {
-    from { opacity: 0; transform: translateY(18px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-  .anim {
-    opacity: 0;
-    animation: rise 0.5s ease forwards;
-    animation-delay: calc(var(--d) * 80ms);
   }
 </style>
