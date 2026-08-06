@@ -1,0 +1,173 @@
+---
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dan — Hair Portfolio</title>
+  </head>
+  <body>
+    <main class="page">
+      <header class="header">
+        <a href="/linktree-site/" class="back">← Back</a>
+        <div class="header-center">
+          <div class="name">Dan</div>
+          <div class="subtitle">Hair Portfolio</div>
+        </div>
+        <a href="https://www.vagaro.com/mcgreevysbarbershop/services" target="_blank" rel="noopener" class="book-btn">Book</a>
+      </header>
+
+      <div class="grid">
+        <!-- Drop images here: replace the placeholder divs with <img src="/linktree-site/photos/your-photo.jpg" alt="..." /> -->
+        <div class="slot empty"></div>
+        <div class="slot empty"></div>
+        <div class="slot empty"></div>
+        <div class="slot empty"></div>
+        <div class="slot empty"></div>
+        <div class="slot empty"></div>
+      </div>
+
+      <div class="empty-state">
+        <p>Photos coming soon.</p>
+      </div>
+
+      <footer class="footer">
+        <a href="https://www.vagaro.com/mcgreevysbarbershop/services" target="_blank" rel="noopener" class="book-full">Book an Appointment</a>
+        <a href="https://www.instagram.com/Reppstory/" target="_blank" rel="noopener" class="insta">@Reppstory on Instagram</a>
+      </footer>
+    </main>
+  </body>
+</html>
+
+<style>
+  :global(body) {
+    margin: 0;
+    background: #faf9f5;
+    font-family: Inter, -apple-system, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+  }
+
+  .page {
+    max-width: 480px;
+    margin: 0 auto;
+    padding-bottom: 40px;
+    box-sizing: border-box;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid #e6dfd8;
+  }
+
+  .back {
+    font-size: 13px;
+    color: #8e8b82;
+    text-decoration: none;
+    min-width: 48px;
+  }
+
+  .back:hover { color: #141413; }
+
+  .header-center {
+    text-align: center;
+  }
+
+  .name {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 17px;
+    font-weight: 400;
+    color: #141413;
+    letter-spacing: -0.2px;
+  }
+
+  .subtitle {
+    font-size: 11px;
+    color: #8e8b82;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  .book-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 56px;
+    height: 32px;
+    padding: 0 12px;
+    background: #141413;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 6px;
+    text-decoration: none;
+    letter-spacing: 0.3px;
+  }
+
+  /* Grid */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+    padding: 2px;
+  }
+
+  .slot {
+    aspect-ratio: 1;
+    overflow: hidden;
+    background: #efe9de;
+  }
+
+  .slot img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  /* Empty state — shown when all slots are placeholders */
+  .grid:has(.slot:not(.empty)) + .empty-state { display: none; }
+  .empty-state {
+    text-align: center;
+    padding: 32px 20px 0;
+    color: #8e8b82;
+    font-size: 13px;
+  }
+
+  /* Footer */
+  .footer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 32px 20px 0;
+  }
+
+  .book-full {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 46px;
+    background: #141413;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 8px;
+    text-decoration: none;
+    box-sizing: border-box;
+  }
+
+  .insta {
+    font-size: 13px;
+    color: #8e8b82;
+    text-decoration: none;
+  }
+
+  .insta:hover { color: #141413; }
+</style>
