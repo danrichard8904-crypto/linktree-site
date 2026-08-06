@@ -21,10 +21,15 @@
         <span class="badge anim" style="--d:2">Barber / Stylist</span>
         <p class="bio anim" style="--d:3">Booth renter · walk-ins by appointment only</p>
         <nav class="links">
-          <a href="/linktree-site/portfolio" class="btn btn-primary anim" style="--d:4">Hair Portfolio</a>
-          <a href="https://www.instagram.com/Reppstory/" class="btn btn-secondary anim" style="--d:5" target="_blank" rel="noopener">Instagram</a>
-          <a href="#" class="btn btn-secondary anim" style="--d:6">TikTok</a>
-          <a href="#" class="btn btn-secondary anim" style="--d:7">Text Me</a>
+          <a href="/linktree-site/portfolio" class="btn btn-primary anim" style="--d:4">
+            <span>Hair Portfolio</span><span class="arr">→</span>
+          </a>
+          <a href="https://www.instagram.com/Reppstory/" class="btn btn-secondary anim" style="--d:5" target="_blank" rel="noopener">
+            <span>Instagram</span><span class="arr">→</span>
+          </a>
+          <a href="#" class="btn btn-secondary anim" style="--d:6">
+            <span>TikTok</span><span class="arr">→</span>
+          </a>
         </nav>
       </main>
       <aside class="preview anim" style="--d:3" aria-hidden="true">
@@ -32,7 +37,7 @@
           <img src="/linktree-site/photos/IMG_4542.jpg" alt="" />
           <img src="/linktree-site/photos/IMG_4950.jpg" alt="" />
           <img src="/linktree-site/photos/IMG_4966.jpg" alt="" />
-          <video src="/linktree-site/photos/IMG_4355.mp4" autoplay muted loop playsinline preload="auto"></video>
+          <video src="/linktree-site/photos/IMG_4355.mp4" autoplay muted playsinline preload="auto"></video>
         </a>
         <p class="preview-label">Recent Work</p>
       </aside>
@@ -66,6 +71,89 @@
     flex-direction: column;
     align-items: center;
     box-sizing: border-box;
+  }
+  .avatar {
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    background: #efe9de;
+    border: 1px solid #e6dfd8;
+    margin-bottom: 16px;
+  }
+  .name {
+    font-family: Georgia, 'Tiempos Headline', 'Times New Roman', serif;
+    font-size: 28px;
+    font-weight: 400;
+    letter-spacing: -0.3px;
+    color: #141413;
+    margin: 0;
+    text-align: center;
+  }
+  .badge {
+    margin-top: 8px;
+    padding: 4px 12px;
+    background: #efe9de;
+    color: #141413;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    border-radius: 9999px;
+  }
+  .bio {
+    margin-top: 14px;
+    font-size: 14px;
+    line-height: 1.55;
+    color: #3d3d3a;
+    text-align: center;
+  }
+  .links {
+    width: 100%;
+    margin-top: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    height: 54px;
+    padding: 0 20px;
+    border-radius: 9999px;
+    font-family: Inter, -apple-system, 'Segoe UI', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    text-decoration: none;
+    box-sizing: border-box;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    position: relative;
+  }
+  .btn:active { transform: scale(0.97); }
+  .arr {
+    font-size: 16px;
+    transition: transform 0.2s ease;
+  }
+  .btn:hover .arr { transform: translateX(4px); }
+  .btn-primary {
+    background: #141413;
+    color: #fff;
+    box-shadow: 0 2px 12px rgba(20,20,19,0.25);
+  }
+  .btn-primary:hover {
+    box-shadow: 0 4px 20px rgba(20,20,19,0.35);
+    transform: translateY(-1px);
+  }
+  .btn-secondary {
+    background: transparent;
+    color: #141413;
+    border: 1.5px solid #d4cec7;
+  }
+  .btn-secondary:hover {
+    background: #efe9de;
+    border-color: #141413;
+    transform: translateY(-1px);
   }
   .preview { display: none; }
 
@@ -115,70 +203,6 @@
       margin: 0;
       text-align: center;
     }
-  }
-  .avatar {
-    width: 88px;
-    height: 88px;
-    border-radius: 50%;
-    background: #efe9de;
-    border: 1px solid #e6dfd8;
-    margin-bottom: 16px;
-  }
-  .name {
-    font-family: Georgia, 'Tiempos Headline', 'Times New Roman', serif;
-    font-size: 28px;
-    font-weight: 400;
-    letter-spacing: -0.3px;
-    color: #141413;
-    margin: 0;
-    text-align: center;
-  }
-  .badge {
-    margin-top: 8px;
-    padding: 4px 12px;
-    background: #efe9de;
-    color: #141413;
-    font-size: 12px;
-    font-weight: 500;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    border-radius: 9999px;
-  }
-  .bio {
-    margin-top: 14px;
-    font-size: 14px;
-    line-height: 1.55;
-    color: #3d3d3a;
-    text-align: center;
-  }
-  .links {
-    width: 100%;
-    margin-top: 28px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-  .btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    height: 44px;
-    border-radius: 8px;
-    font-family: Inter, -apple-system, 'Segoe UI', sans-serif;
-    font-size: 14px;
-    font-weight: 500;
-    text-decoration: none;
-    box-sizing: border-box;
-  }
-  .btn-primary {
-    background: #141413;
-    color: #fff;
-  }
-  .btn-secondary {
-    background: #faf9f5;
-    color: #141413;
-    border: 1px solid #e6dfd8;
   }
 
   @keyframes rise {

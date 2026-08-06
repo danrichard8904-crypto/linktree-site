@@ -22,16 +22,44 @@
         <div class="slot" style="--i:0"><img src="/linktree-site/photos/IMG_4542.jpg" alt="" /></div>
         <div class="slot" style="--i:1"><img src="/linktree-site/photos/IMG_4950.jpg" alt="" /></div>
         <div class="slot" style="--i:2"><img src="/linktree-site/photos/IMG_4966.jpg" alt="" /></div>
-        <div class="slot" style="--i:3"><video src="/linktree-site/photos/IMG_4355.mp4" autoplay muted loop playsinline preload="auto"></video></div>
-        <div class="slot" style="--i:4"><video src="/linktree-site/photos/IMG_4927.mp4" autoplay muted loop playsinline preload="auto"></video></div>
-        <div class="slot" style="--i:5"><video src="/linktree-site/photos/IMG_4999.mp4" autoplay muted loop playsinline preload="auto"></video></div>
+        <div class="slot" style="--i:3"><video src="/linktree-site/photos/IMG_4355.mp4" autoplay muted playsinline preload="auto"></video></div>
+        <div class="slot" style="--i:4"><video src="/linktree-site/photos/IMG_4927.mp4" autoplay muted playsinline preload="auto"></video></div>
+        <div class="slot" style="--i:5"><video src="/linktree-site/photos/IMG_4999.mp4" autoplay muted playsinline preload="auto"></video></div>
       </div>
+
+      <section class="bio-section">
+        <div class="bio-avatar"></div>
+        <h2 class="bio-name">Dan</h2>
+        <p class="bio-handle">@Reppstory</p>
+        <p class="bio-text">
+          Booth renter at McGreevey's Barbershop. I specialize in fades, tapers, and textured cuts.
+          Walk-ins by appointment only — book through the link below to secure your spot.
+        </p>
+        <div class="bio-tags">
+          <span class="tag">Fades</span>
+          <span class="tag">Tapers</span>
+          <span class="tag">Textured Cuts</span>
+          <span class="tag">Beard Trims</span>
+        </div>
+      </section>
 
       <footer class="footer">
         <a href="https://www.vagaro.com/mcgreevysbarbershop/services" target="_blank" rel="noopener" class="book-full">Book an Appointment</a>
         <a href="https://www.instagram.com/Reppstory/" target="_blank" rel="noopener" class="insta">@Reppstory on Instagram</a>
       </footer>
     </main>
+
+    <script>
+      // Manual loop to avoid the pink/green corruption glitch at the native loop boundary
+      document.querySelectorAll('video').forEach(v => {
+        v.addEventListener('timeupdate', () => {
+          if (v.duration && v.currentTime >= v.duration - 0.08) {
+            v.currentTime = 0;
+            v.play().catch(() => {});
+          }
+        });
+      });
+    </script>
   </body>
 </html>
 
@@ -130,7 +158,7 @@
     height: 100%;
     object-fit: cover;
     display: block;
-    pointer-events: none; /* prevents tap-to-pause on mobile */
+    pointer-events: none;
   }
 
   @keyframes pop-in {
@@ -142,13 +170,64 @@
     animation-delay: calc(var(--i) * 70ms);
   }
 
-  /* Empty state — shown when all slots are placeholders */
-  .grid:has(.slot:not(.empty)) + .empty-state { display: none; }
-  .empty-state {
+  /* Biography */
+  .bio-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 36px 24px 28px;
+    border-bottom: 1px solid #e6dfd8;
     text-align: center;
-    padding: 32px 20px 0;
-    color: #8e8b82;
+  }
+
+  .bio-avatar {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: #efe9de;
+    border: 1px solid #e6dfd8;
+    margin-bottom: 14px;
+  }
+
+  .bio-name {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 22px;
+    font-weight: 400;
+    color: #141413;
+    margin: 0;
+    letter-spacing: -0.2px;
+  }
+
+  .bio-handle {
     font-size: 13px;
+    color: #8e8b82;
+    margin: 4px 0 16px;
+  }
+
+  .bio-text {
+    font-size: 14px;
+    line-height: 1.65;
+    color: #3d3d3a;
+    max-width: 380px;
+    margin: 0 0 20px;
+  }
+
+  .bio-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+  }
+
+  .tag {
+    padding: 4px 12px;
+    background: #efe9de;
+    color: #141413;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    border-radius: 9999px;
+    border: 1px solid #e6dfd8;
   }
 
   /* Footer */
@@ -183,4 +262,3 @@
 
   .insta:hover { color: #141413; }
 </style>
-
