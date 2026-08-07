@@ -112,9 +112,11 @@ const placed = media.map((item, i) => ({
       // ceiling keeps every zoom level inside the real source resolution.
       const MAX_SCALE = 2.0;
       const MAX_BLUR = 7;
-      // Below this zoom every clip is a thumbnail, so decoding them is wasted
-      // work — the single biggest source of pan/zoom jank with this many videos.
-      const PLAYBACK_MIN_SCALE = 0.42;
+      // No absolute-zoom gate. The board opens fitted to the screen at roughly
+      // 0.20-0.25 scale, so any threshold above that left every clip frozen and
+      // the board looking broken. The concurrency cap below is what actually
+      // bounds decode cost, and it does so at every zoom level.
+      const PLAYBACK_MIN_SCALE = 0;
       // Phones cannot sustain eight simultaneous H.264 decoders. Only the
       // clips nearest the centre of view are allowed to run.
       const MAX_CONCURRENT_VIDEOS = isCoarse ? 2 : 8;
