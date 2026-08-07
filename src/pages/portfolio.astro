@@ -19,65 +19,51 @@ const media = fs.readdirSync(PORTFOLIO_DIR)
 
 const TILE_W = 300;
 const TILE_H = 400;
-const STEP_X = 330;
-const STEP_Y = 320;
 const PAD = 80;
 
-// Diamond pattern: tiles sit on the perimeter only — one at each cardinal
-// point (north / east / south / west) with the middle left open. Edge tiles
-// advance in whole grid steps out from each corner, which guarantees
-// neighbours are always a full step apart and can never overlap.
-function diamondPositions(n) {
-  if (n <= 0) return [];
-
-  const cardinals = [
-    { gx: 0, gy: -1 }, { gx: 1, gy: 0 }, { gx: 0, gy: 1 }, { gx: -1, gy: 0 },
-  ];
-  if (n <= 4) return cardinals.slice(0, n);
-
-  const radius = Math.ceil(n / 4);
-  const corners = [
-    { gx: 0, gy: -radius }, // N
-    { gx: radius, gy: 0 },  // E
-    { gx: 0, gy: radius },  // S
-    { gx: -radius, gy: 0 }, // W
-  ];
-  const dirs = [
-    { dx: 1, dy: 1 }, { dx: -1, dy: 1 }, { dx: -1, dy: -1 }, { dx: 1, dy: -1 },
-  ];
-
-  // Spread the non-corner tiles evenly around the four edges.
-  const perEdge = [0, 0, 0, 0];
-  let remaining = n - 4;
-  let e = 0;
-  while (remaining > 0 && perEdge.some(c => c < radius - 1)) {
-    if (perEdge[e] < radius - 1) { perEdge[e]++; remaining--; }
-    e = (e + 1) % 4;
-  }
-
-  const out = [];
-  for (let i = 0; i < 4; i++) {
-    out.push(corners[i]);
-    for (let s = 1; s <= perEdge[i]; s++) {
-      out.push({
-        gx: corners[i].gx + dirs[i].dx * s,
-        gy: corners[i].gy + dirs[i].dy * s,
-      });
+// Diamond lattice: tiles occupy every other cell of a checkerboard, so each
+// one meets its neighbours corner-to-corner and the skipped cells read as
+// diamond-shaped holes between every group of four. Cells are taken nearest
+// the centre first, which keeps the cluster compact and roughly diamond.
+function latticePositions(n) {
+  const cells = [];
+  const reach = Math.ceil(Math.sqrt(n)) + 2;
+  for (let gy = -reach; gy <= reach; gy++) {
+    for (let gx = -reach; gx <= reach; gx++) {
+      if ((gx + gy) % 2 !== 0) continue;          // skip to leave the holes
+      cells.push({ gx, gy });
     }
   }
-  return out;
+  cells.sort((a, b) => {
+    // Manhattan distance gives the cluster a diamond silhouette; angle breaks
+    // ties so equidistant cells fill in a stable, symmetric order.
+    const da = Math.abs(a.gx) + Math.abs(a.gy);
+    const db = Math.abs(b.gx) + Math.abs(b.gy);
+    if (da !== db) return da - db;
+    return Math.atan2(a.gy, a.gx) - Math.atan2(b.gy, b.gx);
+  });
+  return cells.slice(0, n);
 }
 
-const slots = diamondPositions(media.length);
-const radius = Math.max(1, ...slots.map(s => Math.max(Math.abs(s.gx), Math.abs(s.gy))));
+const slots = latticePositions(media.length);
 
-const canvasW = radius * 2 * STEP_X + TILE_W + PAD * 2;
-const canvasH = radius * 2 * STEP_Y + TILE_H + PAD * 2;
+// Half-steps: adjacent lattice cells differ by 1 in each axis, so a half-tile
+// step makes their corners touch exactly.
+const STEP_X = TILE_W / 2;
+const STEP_Y = TILE_H / 2;
+
+const minGx = Math.min(...slots.map(s => s.gx));
+const minGy = Math.min(...slots.map(s => s.gy));
+const maxGx = Math.max(...slots.map(s => s.gx));
+const maxGy = Math.max(...slots.map(s => s.gy));
+
+const canvasW = (maxGx - minGx) * STEP_X + TILE_W + PAD * 2;
+const canvasH = (maxGy - minGy) * STEP_Y + TILE_H + PAD * 2;
 
 const placed = media.map((item, i) => ({
   ...item,
-  x: PAD + (slots[i].gx + radius) * STEP_X,
-  y: PAD + (slots[i].gy + radius) * STEP_Y,
+  x: PAD + (slots[i].gx - minGx) * STEP_X,
+  y: PAD + (slots[i].gy - minGy) * STEP_Y,
 }));
 ---
 <!doctype html>
