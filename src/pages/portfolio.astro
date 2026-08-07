@@ -94,7 +94,7 @@ rows.forEach((count, r) => {
             {item.type === 'video' ? (
               <video class="media" src={item.src} muted loop playsinline preload="metadata"></video>
             ) : (
-              <img class="media" src={item.src} alt="" loading="lazy" decoding="async" draggable="false" />
+              <img class="media" src={item.src} alt="" decoding="async" draggable="false" />
             )}
           </figure>
         ))}
@@ -497,9 +497,6 @@ rows.forEach((count, r) => {
     overflow: hidden;
     background: #1f1e1b;
     box-shadow: 0 20px 44px rgba(0,0,0,0.5);
-    /* Lets the browser skip layout/paint for tiles that are off screen. */
-    content-visibility: auto;
-    contain-intrinsic-size: 300px 400px;
   }
 
   .media {
