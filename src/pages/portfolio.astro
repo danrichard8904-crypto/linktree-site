@@ -1,4 +1,21 @@
 ---
+import fs from 'node:fs';
+import path from 'node:path';
+
+const PORTFOLIO_DIR = path.join(process.cwd(), 'public/photos/portfolio');
+const IMAGE_EXT = new Set(['.jpg', '.jpeg', '.png', '.webp']);
+const VIDEO_EXT = new Set(['.mp4', '.webm', '.mov']);
+
+const items = fs.readdirSync(PORTFOLIO_DIR)
+  .filter(name => IMAGE_EXT.has(path.extname(name).toLowerCase()) || VIDEO_EXT.has(path.extname(name).toLowerCase()))
+  .sort()
+  .map(name => {
+    const ext = path.extname(name).toLowerCase();
+    return {
+      type: VIDEO_EXT.has(ext) ? 'video' : 'image',
+      src: `/linktree-site/photos/portfolio/${name}`,
+    };
+  });
 ---
 <!doctype html>
 <html lang="en">
@@ -17,27 +34,18 @@
       </header>
 
       <div class="grid">
-        <button class="slot" style="--i:0" data-type="image" data-src="/linktree-site/photos/IMG_4542.jpg" aria-label="Open photo">
-          <img src="/linktree-site/photos/IMG_4542.jpg" alt="" />
-        </button>
-        <button class="slot" style="--i:1" data-type="image" data-src="/linktree-site/photos/IMG_4950.jpg" aria-label="Open photo">
-          <img src="/linktree-site/photos/IMG_4950.jpg" alt="" />
-        </button>
-        <button class="slot loop-video" style="--i:2" data-type="video" data-src="/linktree-site/photos/IMG_5008.mp4" aria-label="Open video">
-          <video class="v" muted playsinline preload="auto"></video>
-          <video class="v" muted playsinline preload="auto"></video>
-        </button>
-        <button class="slot loop-video" style="--i:3" data-type="video" data-src="/linktree-site/photos/IMG_4355.mp4" aria-label="Open video">
-          <video class="v" muted playsinline preload="auto"></video>
-          <video class="v" muted playsinline preload="auto"></video>
-        </button>
-        <button class="slot" style="--i:4" data-type="image" data-src="/linktree-site/photos/IMG_4966.jpg" aria-label="Open photo">
-          <img src="/linktree-site/photos/IMG_4966.jpg" alt="" />
-        </button>
-        <button class="slot loop-video" style="--i:5" data-type="video" data-src="/linktree-site/photos/IMG_5030.mp4" aria-label="Open video">
-          <video class="v" muted playsinline preload="auto"></video>
-          <video class="v" muted playsinline preload="auto"></video>
-        </button>
+        {items.map((item, i) => (
+          item.type === 'video' ? (
+            <button class="slot loop-video" style={`--i:${i}`} data-type="video" data-src={item.src} aria-label="Open video">
+              <video class="v" muted playsinline preload="auto"></video>
+              <video class="v" muted playsinline preload="auto"></video>
+            </button>
+          ) : (
+            <button class="slot" style={`--i:${i}`} data-type="image" data-src={item.src} aria-label="Open photo">
+              <img src={item.src} alt="" />
+            </button>
+          )
+        ))}
       </div>
 
       <section class="bio-section">
@@ -63,13 +71,15 @@
       <button class="lb-close" aria-label="Close">✕</button>
       <button class="lb-nav lb-prev" aria-label="Previous">‹</button>
       <button class="lb-nav lb-next" aria-label="Next">›</button>
-      <div class="lb-content" id="lbContent"></div>
+      <div class="lb-stage">
+        <div class="lb-content" id="lbContent"></div>
+      </div>
     </div>
 
-    <script>
+    <script define:vars={{ items }}>
       // Seamless loop via dual-buffer crossfade: the visible video is never
-      // seeked (that's what caused the decode corruption at the loop point).
-      // A hidden twin restarts and takes over instead.
+      // seeked (that's what caused decode corruption at the loop point on
+      // Android/iOS). A hidden twin restarts and takes over instead.
       const SWAP_BEFORE = 0.15;
 
       function startLoopVideo(container) {
@@ -104,39 +114,74 @@
       document.querySelectorAll('.grid .loop-video').forEach(startLoopVideo);
 
       // Lightbox: tap a grid item to expand full-screen, swipe/arrows to move
-      // between items, tap outside or Escape/close to dismiss.
+      // between items, tap outside or Escape/close to dismiss. `items` is
+      // injected at build time from the actual portfolio folder contents —
+      // whatever is open-ended, no fixed slot count.
       const slots = Array.from(document.querySelectorAll('.grid .slot'));
-      const items = slots.map(slot => ({
-        type: slot.dataset.type,
-        src: slot.dataset.src,
-      }));
-
       const lightbox = document.getElementById('lightbox');
       const lbContent = document.getElementById('lbContent');
       let currentIndex = 0;
       let isOpen = false;
+      let isTransitioning = false;
 
-      function renderLightboxItem(index) {
-        lbContent.innerHTML = '';
-        const item = items[index];
+      // Astro's scoped-CSS attribute only lands on elements written in the
+      // static markup, so JS-created nodes miss the stylesheet's sizing
+      // rules. Set the critical dimensions inline instead.
+      function buildLightboxItem(item) {
         if (item.type === 'video') {
           const container = document.createElement('div');
           container.className = 'loop-video lb-video';
           container.dataset.src = item.src;
-          container.innerHTML = '<video class="v" muted playsinline preload="auto"></video><video class="v" muted playsinline preload="auto"></video>';
-          lbContent.appendChild(container);
+          container.style.cssText = 'position:relative;width:min(92vw,80vh);height:min(92vw,80vh);border-radius:10px;overflow:hidden;';
+          container.innerHTML = '<video class="v" muted playsinline preload="auto" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:0;"></video><video class="v" muted playsinline preload="auto" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:0;"></video>';
           startLoopVideo(container);
-        } else {
-          const img = document.createElement('img');
-          img.src = item.src;
-          img.alt = '';
-          lbContent.appendChild(img);
+          return container;
         }
+        const img = document.createElement('img');
+        img.src = item.src;
+        img.alt = '';
+        img.style.cssText = 'max-width:92vw;max-height:80vh;width:auto;height:auto;object-fit:contain;border-radius:10px;display:block;';
+        return img;
+      }
+
+      function renderLightboxItem(index, direction) {
+        const node = buildLightboxItem(items[index]);
+        node.style.opacity = '0';
+        node.style.transform = direction === 'next' ? 'translateX(24px)' : direction === 'prev' ? 'translateX(-24px)' : 'scale(0.97)';
+        node.style.transition = 'opacity 0.22s cubic-bezier(0.22,1,0.36,1), transform 0.22s cubic-bezier(0.22,1,0.36,1)';
+        lbContent.appendChild(node);
+        // Force a layout flush so the transition from the initial inline
+        // style above actually animates instead of jumping straight to rest.
+        void node.offsetWidth;
+        node.style.opacity = '1';
+        node.style.transform = 'translateX(0) scale(1)';
+      }
+
+      function clearLightboxContent() {
+        lbContent.innerHTML = '';
+      }
+
+      function goTo(index, direction) {
+        if (isTransitioning) return;
+        isTransitioning = true;
+        const outgoing = lbContent.firstElementChild;
+        if (outgoing) {
+          outgoing.style.transition = 'opacity 0.16s ease, transform 0.16s ease';
+          outgoing.style.opacity = '0';
+          outgoing.style.transform = direction === 'next' ? 'translateX(-24px)' : direction === 'prev' ? 'translateX(24px)' : 'scale(0.97)';
+        }
+        setTimeout(() => {
+          clearLightboxContent();
+          currentIndex = index;
+          renderLightboxItem(currentIndex, direction);
+          isTransitioning = false;
+        }, outgoing ? 140 : 0);
       }
 
       function openLightbox(index) {
         currentIndex = index;
-        renderLightboxItem(currentIndex);
+        clearLightboxContent();
+        renderLightboxItem(currentIndex, null);
         lightbox.classList.add('open');
         lightbox.setAttribute('aria-hidden', 'false');
         isOpen = true;
@@ -145,18 +190,16 @@
       function closeLightbox() {
         lightbox.classList.remove('open');
         lightbox.setAttribute('aria-hidden', 'true');
-        lbContent.innerHTML = '';
         isOpen = false;
+        setTimeout(clearLightboxContent, 280);
       }
 
       function showNext() {
-        currentIndex = (currentIndex + 1) % items.length;
-        renderLightboxItem(currentIndex);
+        goTo((currentIndex + 1) % items.length, 'next');
       }
 
       function showPrev() {
-        currentIndex = (currentIndex - 1 + items.length) % items.length;
-        renderLightboxItem(currentIndex);
+        goTo((currentIndex - 1 + items.length) % items.length, 'prev');
       }
 
       slots.forEach((slot, index) => {
@@ -168,7 +211,7 @@
       document.querySelector('.lb-prev').addEventListener('click', showPrev);
 
       lightbox.addEventListener('click', (e) => {
-        if (e.target === lightbox) closeLightbox();
+        if (e.target === lightbox || e.target.classList.contains('lb-stage')) closeLightbox();
       });
 
       document.addEventListener('keydown', (e) => {
@@ -377,18 +420,20 @@
     inset: 0;
     z-index: 100;
     background: rgba(10,10,9,0.96);
-    display: none;
+    display: flex;
     align-items: center;
     justify-content: center;
     opacity: 0;
-    transition: opacity 0.2s ease;
+    visibility: hidden;
+    transition: opacity 0.28s cubic-bezier(0.22,1,0.36,1), visibility 0s linear 0.28s;
   }
   .lightbox.open {
-    display: flex;
     opacity: 1;
+    visibility: visible;
+    transition: opacity 0.28s cubic-bezier(0.22,1,0.36,1), visibility 0s linear 0s;
   }
 
-  .lb-content {
+  .lb-stage {
     width: 100%;
     height: 100%;
     display: flex;
@@ -396,31 +441,6 @@
     justify-content: center;
     padding: 24px;
     box-sizing: border-box;
-  }
-  .lb-content img,
-  .lb-content .lb-video {
-    max-width: 100%;
-    max-height: 100%;
-    width: auto;
-    height: auto;
-    object-fit: contain;
-    border-radius: 8px;
-  }
-  .lb-content .lb-video {
-    position: relative;
-    aspect-ratio: 1;
-    max-height: 100%;
-  }
-  .lb-content .lb-video .v {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    opacity: 0;
-  }
-  .lb-content .lb-video .v.active {
-    opacity: 1;
   }
 
   .lb-close,
@@ -435,11 +455,12 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: border-color 0.15s ease;
+    transition: border-color 0.15s ease, transform 0.15s ease;
   }
   .lb-close:hover,
   .lb-nav:hover {
     border-color: rgba(232,165,90,0.9);
+    transform: scale(1.06);
   }
 
   .lb-close {
@@ -457,6 +478,7 @@
     height: 48px;
     font-size: 26px;
   }
+  .lb-nav:hover { transform: translateY(-50%) scale(1.06); }
   .lb-prev { left: 12px; }
   .lb-next { right: 12px; }
 
