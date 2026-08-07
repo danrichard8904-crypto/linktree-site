@@ -12,10 +12,8 @@
       <header class="header">
         <a href="/linktree-site/" class="back">← Back</a>
         <div class="header-center">
-          <div class="name">Dan</div>
           <div class="subtitle">Hair Portfolio</div>
         </div>
-        <a href="https://www.vagaro.com/mcgreevysbarbershop/services" target="_blank" rel="noopener" class="book-btn">Book</a>
       </header>
 
       <div class="grid">
@@ -38,8 +36,6 @@
 
       <section class="bio-section">
         <div class="bio-avatar"></div>
-        <h2 class="bio-name">Dan</h2>
-        <p class="bio-handle">@Reppstory</p>
         <p class="bio-text">
           Booth renter at McGreevey's Barbershop. I specialize in fades, tapers, and textured cuts.
           Walk-ins by appointment only — book through the link below to secure your spot.
@@ -54,7 +50,6 @@
 
       <footer class="footer">
         <a href="https://www.vagaro.com/mcgreevysbarbershop/services" target="_blank" rel="noopener" class="book-full">Book an Appointment</a>
-        <a href="https://www.instagram.com/Reppstory/" target="_blank" rel="noopener" class="insta">@Reppstory on Instagram</a>
       </footer>
     </main>
 
@@ -136,15 +131,8 @@
   .back:hover { color: #faf9f5; }
 
   .header-center {
+    flex: 1;
     text-align: center;
-  }
-
-  .name {
-    font-family: Georgia, 'Times New Roman', serif;
-    font-size: 17px;
-    font-weight: 400;
-    color: #faf9f5;
-    letter-spacing: -0.2px;
   }
 
   .subtitle {
@@ -152,25 +140,6 @@
     color: #a09d96;
     letter-spacing: 1.2px;
     text-transform: uppercase;
-    margin-top: 2px;
-  }
-
-  .book-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 56px;
-    height: 32px;
-    padding: 0 12px;
-    background: #e8a55a;
-    color: #141413;
-    font-size: 12px;
-    font-weight: 600;
-    border-radius: 6px;
-    text-decoration: none;
-    letter-spacing: 0.3px;
-    border: 2px solid #141413;
-    box-sizing: border-box;
   }
 
   /* Grid */
@@ -235,27 +204,12 @@
     margin-bottom: 14px;
   }
 
-  .bio-name {
-    font-family: Georgia, 'Times New Roman', serif;
-    font-size: 22px;
-    font-weight: 400;
-    color: #faf9f5;
-    margin: 0;
-    letter-spacing: -0.2px;
-  }
-
-  .bio-handle {
-    font-size: 13px;
-    color: #a09d96;
-    margin: 4px 0 16px;
-  }
-
   .bio-text {
     font-size: 14px;
     line-height: 1.65;
     color: #a09d96;
     max-width: 380px;
-    margin: 0 0 20px;
+    margin: 14px 0 20px;
   }
 
   .bio-tags {
@@ -311,12 +265,4 @@
     transform: translate(4px, 4px);
     box-shadow: 1px 1px 0 0 #141413;
   }
-
-  .insta {
-    font-size: 13px;
-    color: #a09d96;
-    text-decoration: none;
-  }
-
-  .insta:hover { color: #faf9f5; }
 </style>
