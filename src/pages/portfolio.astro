@@ -7,79 +7,279 @@ const IMAGE_EXT = new Set(['.jpg', '.jpeg', '.png', '.webp']);
 const VIDEO_EXT = new Set(['.mp4', '.webm', '.mov']);
 
 const items = fs.readdirSync(PORTFOLIO_DIR)
-  .filter(name => IMAGE_EXT.has(path.extname(name).toLowerCase()) || VIDEO_EXT.has(path.extname(name).toLowerCase()))
-  .sort()
-  .map(name => {
+  .filter(name => {
     const ext = path.extname(name).toLowerCase();
-    return {
-      type: VIDEO_EXT.has(ext) ? 'video' : 'image',
-      src: `/linktree-site/photos/portfolio/${name}`,
-    };
-  });
+    return IMAGE_EXT.has(ext) || VIDEO_EXT.has(ext);
+  })
+  .sort()
+  .map(name => ({
+    type: VIDEO_EXT.has(path.extname(name).toLowerCase()) ? 'video' : 'image',
+    src: `/linktree-site/photos/portfolio/${name}`,
+  }));
 ---
 <!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
     <title>Dan — Hair Portfolio</title>
   </head>
   <body>
-    <main class="page">
-      <header class="header">
-        <a href="/linktree-site/" class="back">← Back</a>
-        <div class="header-center">
-          <div class="subtitle">Hair Portfolio</div>
-        </div>
-      </header>
+    <header class="topbar">
+      <a href="/linktree-site/" class="back">← Back</a>
+      <div class="subtitle">Hair Portfolio</div>
+      <a href="https://www.vagaro.com/mcgreevysbarbershop/services" target="_blank" rel="noopener" class="book-mini">Book</a>
+    </header>
 
-      <div class="grid">
+    <div class="viewport" id="viewport">
+      <div class="canvas" id="canvas">
         {items.map((item, i) => (
-          item.type === 'video' ? (
-            <button class="slot loop-video" style={`--i:${i}`} data-type="video" data-src={item.src} aria-label="Open video">
-              <video class="v" muted playsinline preload="auto"></video>
-              <video class="v" muted playsinline preload="auto"></video>
-            </button>
-          ) : (
-            <button class="slot" style={`--i:${i}`} data-type="image" data-src={item.src} aria-label="Open photo">
-              <img src={item.src} alt="" />
-            </button>
-          )
+          <figure class="tile" data-index={i} data-type={item.type} data-src={item.src}>
+            {item.type === 'video' ? (
+              <div class="loop-video" data-src={item.src}>
+                <video class="v" muted playsinline preload="auto"></video>
+                <video class="v" muted playsinline preload="auto"></video>
+              </div>
+            ) : (
+              <img src={item.src} alt="" draggable="false" />
+            )}
+          </figure>
         ))}
-      </div>
-
-      <section class="bio-section">
-        <div class="bio-avatar"></div>
-        <p class="bio-text">
-          Booth renter at McGreevey's Barbershop. I specialize in fades, tapers, and textured cuts.
-          Walk-ins by appointment only — book through the link below to secure your spot.
-        </p>
-        <div class="bio-tags">
-          <span class="tag">Fades</span>
-          <span class="tag">Tapers</span>
-          <span class="tag">Textured Cuts</span>
-          <span class="tag">Beard Trims</span>
-        </div>
-      </section>
-
-      <footer class="footer">
-        <a href="https://www.vagaro.com/mcgreevysbarbershop/services" target="_blank" rel="noopener" class="book-full">Book an Appointment</a>
-      </footer>
-    </main>
-
-    <div class="lightbox" id="lightbox" aria-hidden="true">
-      <button class="lb-close" aria-label="Close">✕</button>
-      <button class="lb-nav lb-prev" aria-label="Previous">‹</button>
-      <button class="lb-nav lb-next" aria-label="Next">›</button>
-      <div class="lb-stage">
-        <div class="lb-content" id="lbContent"></div>
       </div>
     </div>
 
-    <script define:vars={{ items }}>
-      // Seamless loop via dual-buffer crossfade: the visible video is never
-      // seeked (that's what caused decode corruption at the loop point on
-      // Android/iOS). A hidden twin restarts and takes over instead.
+    <div class="hint" id="hint">Drag to explore · Double-tap a photo to move in</div>
+
+    <script>
+      const viewport = document.getElementById('viewport');
+      const canvas = document.getElementById('canvas');
+      const hint = document.getElementById('hint');
+      const tiles = Array.from(document.querySelectorAll('.tile'));
+
+      const MIN_SCALE = 0.25;
+      const MAX_SCALE = 4;
+      const MAX_BLUR = 7;
+
+      let scale = 1;
+      let tx = 0;
+      let ty = 0;
+      let animating = false;
+
+      function clamp(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
+
+      function apply(blur) {
+        canvas.style.transform = `translate3d(${tx}px, ${ty}px, 0) scale(${scale})`;
+        canvas.style.filter = blur > 0.05 ? `blur(${blur}px)` : '';
+      }
+
+      // Fit the whole board in view on first paint so the full collection reads
+      // at a glance, the way the zoomed-out state does in the reference.
+      function fitToViewport() {
+        const vw = viewport.clientWidth;
+        const vh = viewport.clientHeight;
+        const cw = canvas.offsetWidth;
+        const ch = canvas.offsetHeight;
+        scale = clamp(Math.min(vw / cw, vh / ch) * 0.92, MIN_SCALE, MAX_SCALE);
+        tx = (vw - cw * scale) / 2;
+        ty = (vh - ch * scale) / 2;
+        apply(0);
+      }
+
+      function easeInOutCubic(p) {
+        return p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+      }
+
+      // The dolly move: position eases along a cubic curve while blur rises and
+      // falls on a sine arc, peaking at maximum travel speed. Blur magnitude is
+      // proportional to distance covered, so small nudges stay crisp and long
+      // pushes smear — the "camera on a cart" feel rather than a hard cut.
+      function glideTo(nextScale, nextTx, nextTy, duration) {
+        if (animating) return;
+        animating = true;
+
+        const fromScale = scale, fromTx = tx, fromTy = ty;
+        const dScale = nextScale - fromScale;
+        const dTx = nextTx - fromTx;
+        const dTy = nextTy - fromTy;
+
+        const travel = Math.hypot(dTx, dTy) + Math.abs(dScale) * 400;
+        const blurPeak = clamp(travel / 260, 0, MAX_BLUR);
+
+        const start = performance.now();
+        canvas.style.willChange = 'transform, filter';
+
+        function frame(now) {
+          const p = clamp((now - start) / duration, 0, 1);
+          const eased = easeInOutCubic(p);
+
+          scale = fromScale + dScale * eased;
+          tx = fromTx + dTx * eased;
+          ty = fromTy + dTy * eased;
+
+          apply(Math.sin(p * Math.PI) * blurPeak);
+
+          if (p < 1) {
+            requestAnimationFrame(frame);
+          } else {
+            canvas.style.willChange = '';
+            animating = false;
+          }
+        }
+        requestAnimationFrame(frame);
+      }
+
+      // Compute the transform that centers a given tile at a given scale.
+      function framingFor(tile, targetScale) {
+        const vw = viewport.clientWidth;
+        const vh = viewport.clientHeight;
+        // Tile offsets are in unscaled canvas space.
+        const cx = tile.offsetLeft + tile.offsetWidth / 2;
+        const cy = tile.offsetTop + tile.offsetHeight / 2;
+        return {
+          tx: vw / 2 - cx * targetScale,
+          ty: vh / 2 - cy * targetScale,
+        };
+      }
+
+      function scaleToFill(tile) {
+        const vw = viewport.clientWidth;
+        const vh = viewport.clientHeight;
+        const pad = 0.86;
+        return clamp(
+          Math.min(vw / tile.offsetWidth, vh / tile.offsetHeight) * pad,
+          MIN_SCALE,
+          MAX_SCALE
+        );
+      }
+
+      function pushInto(tile) {
+        const target = scaleToFill(tile);
+        // Already framed on this tile? Pull back out to the full board instead,
+        // so double-tap toggles rather than dead-ends.
+        if (Math.abs(scale - target) < 0.05) {
+          const vw = viewport.clientWidth, vh = viewport.clientHeight;
+          const cw = canvas.offsetWidth, ch = canvas.offsetHeight;
+          const outScale = clamp(Math.min(vw / cw, vh / ch) * 0.92, MIN_SCALE, MAX_SCALE);
+          glideTo(outScale, (vw - cw * outScale) / 2, (vh - ch * outScale) / 2, 760);
+          return;
+        }
+        const f = framingFor(tile, target);
+        glideTo(target, f.tx, f.ty, 760);
+      }
+
+      tiles.forEach(tile => {
+        tile.addEventListener('dblclick', (e) => {
+          e.preventDefault();
+          pushInto(tile);
+        });
+      });
+
+      // --- Drag to pan -------------------------------------------------------
+      let dragging = false;
+      let moved = false;
+      let lastX = 0, lastY = 0;
+      let activePointers = new Map();
+
+      viewport.addEventListener('pointerdown', (e) => {
+        activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        if (activePointers.size === 1) {
+          dragging = true;
+          moved = false;
+          lastX = e.clientX;
+          lastY = e.clientY;
+          viewport.setPointerCapture(e.pointerId);
+          viewport.classList.add('grabbing');
+        }
+      });
+
+      viewport.addEventListener('pointermove', (e) => {
+        if (!activePointers.has(e.pointerId)) return;
+        activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+        if (activePointers.size === 2) {
+          handlePinch();
+          return;
+        }
+        if (!dragging || animating) return;
+
+        const dx = e.clientX - lastX;
+        const dy = e.clientY - lastY;
+        if (Math.abs(dx) > 2 || Math.abs(dy) > 2) moved = true;
+        tx += dx;
+        ty += dy;
+        lastX = e.clientX;
+        lastY = e.clientY;
+        apply(0);
+        dismissHint();
+      });
+
+      function endPointer(e) {
+        activePointers.delete(e.pointerId);
+        if (activePointers.size < 2) pinchStart = null;
+        if (activePointers.size === 0) {
+          dragging = false;
+          viewport.classList.remove('grabbing');
+        }
+      }
+      viewport.addEventListener('pointerup', endPointer);
+      viewport.addEventListener('pointercancel', endPointer);
+
+      // --- Pinch to zoom -----------------------------------------------------
+      let pinchStart = null;
+
+      function handlePinch() {
+        if (animating) return;
+        const pts = Array.from(activePointers.values());
+        const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+        const midX = (pts[0].x + pts[1].x) / 2;
+        const midY = (pts[0].y + pts[1].y) / 2;
+
+        if (!pinchStart) {
+          pinchStart = { dist, scale, midX, midY };
+          return;
+        }
+
+        const nextScale = clamp(pinchStart.scale * (dist / pinchStart.dist), MIN_SCALE, MAX_SCALE);
+        zoomAround(midX, midY, nextScale);
+        dismissHint();
+      }
+
+      // Keep the point under the fingers/cursor pinned while scale changes.
+      function zoomAround(originX, originY, nextScale) {
+        const rect = viewport.getBoundingClientRect();
+        const px = originX - rect.left;
+        const py = originY - rect.top;
+        const k = nextScale / scale;
+        tx = px - (px - tx) * k;
+        ty = py - (py - ty) * k;
+        scale = nextScale;
+        apply(0);
+      }
+
+      // --- Wheel / trackpad zoom --------------------------------------------
+      viewport.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        if (animating) return;
+        const factor = Math.exp(-e.deltaY * 0.0022);
+        const nextScale = clamp(scale * factor, MIN_SCALE, MAX_SCALE);
+        zoomAround(e.clientX, e.clientY, nextScale);
+        dismissHint();
+      }, { passive: false });
+
+      // --- Hint --------------------------------------------------------------
+      let hintGone = false;
+      function dismissHint() {
+        if (hintGone) return;
+        hintGone = true;
+        hint.classList.add('gone');
+      }
+      setTimeout(dismissHint, 6000);
+
+      // --- Video loops -------------------------------------------------------
+      // Dual-buffer crossfade: the visible video is never seeked (seeking is what
+      // caused decode corruption at the loop point). A hidden twin restarts and
+      // takes over. Opacity is set inline because Astro's scoped-CSS attribute
+      // is not guaranteed on every path that touches these nodes.
       const SWAP_BEFORE = 0.15;
 
       function startLoopVideo(container) {
@@ -88,9 +288,6 @@ const items = fs.readdirSync(PORTFOLIO_DIR)
         a.src = src;
         b.src = src;
 
-        // Toggle opacity via inline style, not just the .active class: JS-created
-        // videos (the lightbox) never get Astro's scoped-CSS attribute, so the
-        // stylesheet's ".v.active { opacity: 1 }" rule silently never applies to them.
         function setActive(video, active) {
           video.classList.toggle('active', active);
           video.style.opacity = active ? '1' : '0';
@@ -119,380 +316,156 @@ const items = fs.readdirSync(PORTFOLIO_DIR)
         arm(a, b);
       }
 
-      document.querySelectorAll('.grid .loop-video').forEach(startLoopVideo);
+      document.querySelectorAll('.loop-video').forEach(startLoopVideo);
 
-      // Lightbox: tap a grid item to expand full-screen, swipe/arrows to move
-      // between items, tap outside or Escape/close to dismiss. `items` is
-      // injected at build time from the actual portfolio folder contents —
-      // whatever is open-ended, no fixed slot count.
-      const slots = Array.from(document.querySelectorAll('.grid .slot'));
-      const lightbox = document.getElementById('lightbox');
-      const lbContent = document.getElementById('lbContent');
-      let currentIndex = 0;
-      let isOpen = false;
-      let isTransitioning = false;
+      // --- Init --------------------------------------------------------------
+      function init() { fitToViewport(); }
 
-      // Astro's scoped-CSS attribute only lands on elements written in the
-      // static markup, so JS-created nodes miss the stylesheet's sizing
-      // rules. Set the critical dimensions inline instead.
-      function buildLightboxItem(item) {
-        if (item.type === 'video') {
-          const container = document.createElement('div');
-          container.className = 'loop-video lb-video';
-          container.dataset.src = item.src;
-          container.style.cssText = 'position:relative;width:min(92vw,80vh);height:min(92vw,80vh);border-radius:10px;overflow:hidden;';
-          container.innerHTML = '<video class="v" muted playsinline preload="auto" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:0;"></video><video class="v" muted playsinline preload="auto" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:0;"></video>';
-          startLoopVideo(container);
-          return container;
-        }
-        const img = document.createElement('img');
-        img.src = item.src;
-        img.alt = '';
-        img.style.cssText = 'max-width:92vw;max-height:80vh;width:auto;height:auto;object-fit:contain;border-radius:10px;display:block;';
-        return img;
-      }
-
-      function renderLightboxItem(index, direction) {
-        const node = buildLightboxItem(items[index]);
-        node.style.opacity = '0';
-        node.style.transform = direction === 'next' ? 'translateX(24px)' : direction === 'prev' ? 'translateX(-24px)' : 'scale(0.97)';
-        node.style.transition = 'opacity 0.22s cubic-bezier(0.22,1,0.36,1), transform 0.22s cubic-bezier(0.22,1,0.36,1)';
-        lbContent.appendChild(node);
-        // Force a layout flush so the transition from the initial inline
-        // style above actually animates instead of jumping straight to rest.
-        void node.offsetWidth;
-        node.style.opacity = '1';
-        node.style.transform = 'translateX(0) scale(1)';
-      }
-
-      function clearLightboxContent() {
-        lbContent.innerHTML = '';
-      }
-
-      function goTo(index, direction) {
-        if (isTransitioning) return;
-        isTransitioning = true;
-        const outgoing = lbContent.firstElementChild;
-        if (outgoing) {
-          outgoing.style.transition = 'opacity 0.16s ease, transform 0.16s ease';
-          outgoing.style.opacity = '0';
-          outgoing.style.transform = direction === 'next' ? 'translateX(-24px)' : direction === 'prev' ? 'translateX(24px)' : 'scale(0.97)';
-        }
-        setTimeout(() => {
-          clearLightboxContent();
-          currentIndex = index;
-          renderLightboxItem(currentIndex, direction);
-          isTransitioning = false;
-        }, outgoing ? 140 : 0);
-      }
-
-      function openLightbox(index) {
-        currentIndex = index;
-        clearLightboxContent();
-        renderLightboxItem(currentIndex, null);
-        lightbox.classList.add('open');
-        lightbox.setAttribute('aria-hidden', 'false');
-        isOpen = true;
-      }
-
-      function closeLightbox() {
-        lightbox.classList.remove('open');
-        lightbox.setAttribute('aria-hidden', 'true');
-        isOpen = false;
-        setTimeout(clearLightboxContent, 280);
-      }
-
-      function showNext() {
-        goTo((currentIndex + 1) % items.length, 'next');
-      }
-
-      function showPrev() {
-        goTo((currentIndex - 1 + items.length) % items.length, 'prev');
-      }
-
-      slots.forEach((slot, index) => {
-        slot.addEventListener('click', () => openLightbox(index));
-      });
-
-      document.querySelector('.lb-close').addEventListener('click', closeLightbox);
-      document.querySelector('.lb-next').addEventListener('click', showNext);
-      document.querySelector('.lb-prev').addEventListener('click', showPrev);
-
-      lightbox.addEventListener('click', (e) => {
-        if (e.target === lightbox || e.target.classList.contains('lb-stage')) closeLightbox();
-      });
-
-      document.addEventListener('keydown', (e) => {
-        if (!isOpen) return;
-        if (e.key === 'Escape') closeLightbox();
-        if (e.key === 'ArrowRight') showNext();
-        if (e.key === 'ArrowLeft') showPrev();
-      });
-
-      let touchStartX = 0;
-      lbContent.addEventListener('touchstart', (e) => {
-        touchStartX = e.changedTouches[0].clientX;
-      });
-      lbContent.addEventListener('touchend', (e) => {
-        const deltaX = e.changedTouches[0].clientX - touchStartX;
-        if (deltaX > 50) showPrev();
-        else if (deltaX < -50) showNext();
-      });
+      if (document.readyState === 'complete') init();
+      else window.addEventListener('load', init);
+      window.addEventListener('resize', fitToViewport);
     </script>
   </body>
 </html>
 
 <style>
-  :global(body) {
+  :global(html), :global(body) {
     margin: 0;
-    background: #181715;
+    height: 100%;
+    overflow: hidden;
+    background: #141413;
     font-family: Inter, -apple-system, 'Segoe UI', sans-serif;
-    min-height: 100vh;
+    overscroll-behavior: none;
   }
 
-  .page {
-    max-width: 480px;
-    margin: 0 auto;
-    padding-bottom: 40px;
-    box-sizing: border-box;
-  }
-
-  @media (min-width: 860px) {
-    .page { max-width: 900px; }
-    .grid { grid-template-columns: repeat(6, 1fr); }
-    .book-full { max-width: 420px; }
-  }
-
-  /* Header */
-  .header {
+  .topbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 10;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 16px 20px;
-    border-bottom: 1px solid #252320;
+    padding: 14px 18px;
+    background: linear-gradient(180deg, rgba(20,20,19,0.9) 0%, rgba(20,20,19,0) 100%);
+    pointer-events: none;
   }
+  .topbar a { pointer-events: auto; }
 
   .back {
     font-size: 13px;
     color: #a09d96;
     text-decoration: none;
-    min-width: 48px;
   }
-
   .back:hover { color: #faf9f5; }
-
-  .header-center {
-    flex: 1;
-    text-align: center;
-  }
 
   .subtitle {
     font-size: 11px;
     color: #a09d96;
-    letter-spacing: 1.2px;
+    letter-spacing: 1.4px;
     text-transform: uppercase;
   }
 
-  /* Grid */
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 2px;
-    padding: 2px;
-    background: #1f1e1b;
+  .book-mini {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #e8a55a;
+    text-decoration: none;
+    border: 1px solid rgba(232,165,90,0.55);
+    border-radius: 9999px;
+    padding: 6px 14px;
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+  .book-mini:hover {
+    border-color: #e8a55a;
+    background: rgba(232,165,90,0.12);
   }
 
-  .slot {
-    position: relative;
-    aspect-ratio: 1;
+  .viewport {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    cursor: grab;
+    touch-action: none;
+    background:
+      radial-gradient(ellipse at 50% 40%, #1f1e1b 0%, #141413 70%);
+  }
+  .viewport.grabbing { cursor: grabbing; }
+
+  .canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1100px;
+    transform-origin: 0 0;
+    column-count: 3;
+    column-gap: 18px;
+    padding: 18px;
+    box-sizing: border-box;
+  }
+
+  .tile {
+    break-inside: avoid;
+    margin: 0 0 18px;
+    border-radius: 14px;
     overflow: hidden;
     background: #1f1e1b;
-    border: none;
-    padding: 0;
-    margin: 0;
-    cursor: pointer;
-    display: block;
+    box-shadow: 0 18px 40px rgba(0,0,0,0.45);
+    position: relative;
+    line-height: 0;
   }
 
-  .slot img,
-  .slot video {
+  .tile img,
+  .tile video {
     width: 100%;
-    height: 100%;
-    object-fit: cover;
+    height: auto;
     display: block;
-    pointer-events: none;
+    user-select: none;
+    -webkit-user-drag: none;
   }
 
+  .loop-video {
+    position: relative;
+    width: 100%;
+    /* Portrait clips: reserve height so masonry does not jump before metadata. */
+    aspect-ratio: 9 / 16;
+  }
   .loop-video .v {
     position: absolute;
     inset: 0;
-    opacity: 0;
-  }
-  .loop-video .v.active {
-    opacity: 1;
-  }
-
-  @keyframes pop-in {
-    from { opacity: 0; transform: scale(0.88); }
-    to   { opacity: 1; transform: scale(1); }
-  }
-  .slot {
-    animation: pop-in 0.45s ease forwards;
-    animation-delay: calc(var(--i) * 70ms);
-  }
-
-  /* Biography */
-  .bio-section {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 36px 24px 28px;
-    background: #252320;
-    text-align: center;
-  }
-
-  .bio-avatar {
-    width: 72px;
-    height: 72px;
-    border-radius: 50%;
-    background: #1f1e1b;
-    border: 2px solid #e8a55a;
-    margin-bottom: 14px;
-  }
-
-  .bio-text {
-    font-size: 14px;
-    line-height: 1.65;
-    color: #a09d96;
-    max-width: 380px;
-    margin: 14px 0 20px;
-  }
-
-  .bio-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    justify-content: center;
-  }
-
-  .tag {
-    padding: 4px 12px;
-    background: transparent;
-    color: #faf9f5;
-    font-size: 12px;
-    font-weight: 500;
-    letter-spacing: 0.5px;
-    border-radius: 9999px;
-    border: 1px solid #e8a55a;
-  }
-
-  /* Footer */
-  .footer {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-    padding: 32px 20px 0;
-  }
-
-  .book-full {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    height: 52px;
-    background: #e8a55a;
-    color: #141413;
-    font-size: 14px;
-    font-weight: 700;
-    border-radius: 9999px;
-    border: 2px solid #141413;
-    text-decoration: none;
-    box-sizing: border-box;
-    box-shadow: 5px 5px 0 0 #141413;
-    transition: transform 0.1s cubic-bezier(0.34,1.56,0.64,1),
-                box-shadow 0.1s cubic-bezier(0.34,1.56,0.64,1);
-  }
-  .book-full:hover {
-    transform: translate(-2px, -2px);
-    box-shadow: 7px 7px 0 0 #141413;
-  }
-  .book-full:active {
-    transform: translate(4px, 4px);
-    box-shadow: 1px 1px 0 0 #141413;
-  }
-
-  /* Lightbox */
-  .lightbox {
-    position: fixed;
-    inset: 0;
-    z-index: 100;
-    background: rgba(10,10,9,0.96);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.28s cubic-bezier(0.22,1,0.36,1), visibility 0s linear 0.28s;
-  }
-  .lightbox.open {
-    opacity: 1;
-    visibility: visible;
-    transition: opacity 0.28s cubic-bezier(0.22,1,0.36,1), visibility 0s linear 0s;
-  }
-
-  .lb-stage {
     width: 100%;
     height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
-    box-sizing: border-box;
+    object-fit: cover;
+    opacity: 0;
   }
+  .loop-video .v.active { opacity: 1; }
 
-  .lb-close,
-  .lb-nav {
-    position: absolute;
-    z-index: 101;
-    background: rgba(20,20,19,0.55);
-    color: #faf9f5;
-    border: 1px solid rgba(250,249,245,0.25);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: border-color 0.15s ease, transform 0.15s ease;
+  .hint {
+    position: fixed;
+    bottom: 22px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    font-size: 11px;
+    letter-spacing: 0.8px;
+    color: #a09d96;
+    background: rgba(20,20,19,0.6);
+    border: 1px solid rgba(250,249,245,0.14);
+    border-radius: 9999px;
+    padding: 8px 16px;
+    white-space: nowrap;
+    transition: opacity 0.5s ease, transform 0.5s ease;
+    pointer-events: none;
   }
-  .lb-close:hover,
-  .lb-nav:hover {
-    border-color: rgba(232,165,90,0.9);
-    transform: scale(1.06);
+  .hint.gone {
+    opacity: 0;
+    transform: translateX(-50%) translateY(8px);
   }
-
-  .lb-close {
-    top: 16px;
-    right: 16px;
-    width: 40px;
-    height: 40px;
-    font-size: 16px;
-  }
-
-  .lb-nav {
-    top: 50%;
-    transform: translateY(-50%);
-    width: 48px;
-    height: 48px;
-    font-size: 26px;
-  }
-  .lb-nav:hover { transform: translateY(-50%) scale(1.06); }
-  .lb-prev { left: 12px; }
-  .lb-next { right: 12px; }
 
   @media (min-width: 860px) {
-    .lb-close { top: 24px; right: 24px; }
-    .lb-prev { left: 24px; }
-    .lb-next { right: 24px; }
+    .canvas { column-count: 4; width: 1500px; }
   }
 </style>
