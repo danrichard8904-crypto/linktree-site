@@ -22,10 +22,8 @@
         <div class="bg-scrim"></div>
         <div class="content">
           <h1 class="script-name anim" style="--d:0">Dan</h1>
-          <span class="role-sub anim" style="--d:1">Barber / Stylist</span>
 
-          <div class="glass-links anim" style="--d:2">
-            <a href="/linktree-site/portfolio" class="glass-pill">Hair Portfolio</a>
+          <div class="handle-row anim" style="--d:1">
             <div class="divider-row">
               <span class="line"></span>
               <span class="handle">@Reppstory</span>
@@ -45,6 +43,10 @@
                 </svg>
               </a>
             </div>
+          </div>
+
+          <div class="glass-links anim" style="--d:2">
+            <a href="/linktree-site/portfolio" class="glass-pill">Hair Portfolio</a>
           </div>
         </div>
       </main>
@@ -127,14 +129,13 @@
     line-height: 1;
     text-shadow: 0 2px 12px rgba(0,0,0,0.4);
   }
-  .role-sub {
-    margin-top: 10px;
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    color: #faf9f5;
-    opacity: 0.9;
+  .handle-row {
+    margin-top: 14px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
   }
 
   .glass-links {
@@ -176,7 +177,6 @@
     align-items: center;
     gap: 10px;
     width: 100%;
-    margin-top: 4px;
   }
   .divider-row .line {
     flex: 1;
