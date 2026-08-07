@@ -47,10 +47,11 @@ function latticePositions(n) {
 
 const slots = latticePositions(media.length);
 
-// Half-steps: adjacent lattice cells differ by 1 in each axis, so a half-tile
-// step makes their corners touch exactly.
-const STEP_X = TILE_W / 2;
-const STEP_Y = TILE_H / 2;
+// Adjacent lattice cells differ by 1 on each axis, so stepping a FULL tile
+// puts a neighbour's corner exactly on this one's corner — touching, never
+// overlapping. The skipped cells become the diamond holes between each four.
+const STEP_X = TILE_W;
+const STEP_Y = TILE_H;
 
 const minGx = Math.min(...slots.map(s => s.gx));
 const minGy = Math.min(...slots.map(s => s.gy));
