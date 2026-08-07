@@ -103,12 +103,21 @@ const placed = media.map((item, i) => ({
       const hint = document.getElementById('hint');
       const tiles = Array.from(document.querySelectorAll('.tile'));
 
+      const isCoarse = window.matchMedia('(pointer: coarse)').matches;
+
       const MIN_SCALE = 0.18;
-      const MAX_SCALE = 3.5;
+      // Tiles are 300px wide; sources are 640px (video) / 900px (photo). Past
+      // ~2x a 300px tile renders wider than its 640px source and MUST soften —
+      // no encoder setting fixes magnifying beyond the pixels that exist. This
+      // ceiling keeps every zoom level inside the real source resolution.
+      const MAX_SCALE = 2.0;
       const MAX_BLUR = 7;
       // Below this zoom every clip is a thumbnail, so decoding them is wasted
       // work — the single biggest source of pan/zoom jank with this many videos.
       const PLAYBACK_MIN_SCALE = 0.42;
+      // Phones cannot sustain eight simultaneous H.264 decoders. Only the
+      // clips nearest the centre of view are allowed to run.
+      const MAX_CONCURRENT_VIDEOS = isCoarse ? 2 : 8;
 
       let scale = 1;
       let tx = 0;
@@ -280,7 +289,9 @@ const placed = media.map((item, i) => ({
         if (!activePointers.has(e.pointerId)) return;
         activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
-        if (activePointers.size === 2) { handlePinch(); return; }
+        // A second finger converts the gesture to a pinch. Stop treating it as
+        // a drag so the two handlers cannot both move the board in one frame.
+        if (activePointers.size >= 2) { dragging = false; handlePinch(); return; }
         if (!dragging || animating) return;
 
         const dx = e.clientX - lastX;
@@ -297,6 +308,18 @@ const placed = media.map((item, i) => ({
       function endPointer(e) {
         activePointers.delete(e.pointerId);
         if (activePointers.size < 2) pinchStart = null;
+
+        // Lifting one finger of a pinch used to leave lastX/lastY holding the
+        // position from before the pinch. The next move applied that whole
+        // stale delta at once and the board jumped somewhere the user never
+        // dragged it. Re-anchor to wherever the remaining finger actually is.
+        if (activePointers.size === 1) {
+          const [p] = Array.from(activePointers.values());
+          lastX = p.x;
+          lastY = p.y;
+          dragging = true;
+        }
+
         if (activePointers.size === 0) {
           dragging = false;
           viewport.classList.remove('grabbing');
@@ -376,13 +399,16 @@ const placed = media.map((item, i) => ({
       const videoTiles = tiles.filter(t => t.querySelector('video'));
       const onScreen = new Set();
 
+      // root:null (the real viewport) rather than the .viewport element — an
+      // observer rooted on a transformed ancestor misjudges intersection, which
+      // is why some clips never started. .viewport already fills the screen.
       const io = new IntersectionObserver((entries) => {
         for (const entry of entries) {
           if (entry.isIntersecting) onScreen.add(entry.target);
           else onScreen.delete(entry.target);
         }
         syncPlayback();
-      }, { root: viewport, rootMargin: '120px' });
+      }, { root: null, rootMargin: '100px' });
 
       videoTiles.forEach(t => io.observe(t));
 
@@ -393,13 +419,34 @@ const placed = media.map((item, i) => ({
         requestAnimationFrame(() => {
           syncQueued = false;
           const allowed = scale >= PLAYBACK_MIN_SCALE;
+
+          // Rank the on-screen clips by distance from the centre of the screen
+          // and let only the closest few decode.
+          const cx = window.innerWidth / 2;
+          const cy = window.innerHeight / 2;
+          const ranked = videoTiles
+            .filter(t => onScreen.has(t))
+            .map(t => {
+              const r = t.getBoundingClientRect();
+              return { tile: t, d: Math.hypot(r.left + r.width / 2 - cx, r.top + r.height / 2 - cy) };
+            })
+            .sort((a, b) => a.d - b.d)
+            .slice(0, MAX_CONCURRENT_VIDEOS);
+
+          const winners = new Set(ranked.map(r => r.tile));
+
           for (const tile of videoTiles) {
             const video = tile.querySelector('video');
-            const shouldPlay = allowed && onScreen.has(tile);
-            if (shouldPlay && video.paused) {
-              const p = video.play();
-              if (p && p.catch) p.catch(() => {});
-            } else if (!shouldPlay && !video.paused) {
+            const shouldPlay = allowed && winners.has(tile);
+            if (shouldPlay) {
+              // Only clips cleared to play pull the full file; the rest stay at
+              // metadata (one small range request) showing their first frame.
+              if (video.preload !== 'auto') video.preload = 'auto';
+              if (video.paused) {
+                const p = video.play();
+                if (p && p.catch) p.catch(() => {});
+              }
+            } else if (!video.paused) {
               video.pause();
             }
           }
@@ -431,11 +478,20 @@ const placed = media.map((item, i) => ({
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 14px 18px;
-    background: linear-gradient(180deg, rgba(20,20,19,0.92) 0%, rgba(20,20,19,0) 100%);
+    /* env() keeps the controls clear of the iOS status bar / notch, which was
+       sitting on top of them and making Back and Book look absent on phones. */
+    padding: calc(14px + env(safe-area-inset-top, 0px)) calc(18px + env(safe-area-inset-right, 0px)) 14px calc(18px + env(safe-area-inset-left, 0px));
+    background: linear-gradient(180deg, rgba(20,20,19,0.95) 0%, rgba(20,20,19,0.75) 62%, rgba(20,20,19,0) 100%);
     pointer-events: none;
   }
   .topbar a { pointer-events: auto; }
+
+  /* Comfortable tap targets on touch devices. */
+  @media (pointer: coarse) {
+    .back { font-size: 15px; padding: 8px 4px; }
+    .book-mini { font-size: 12px; padding: 9px 16px; }
+    .subtitle { font-size: 10px; }
+  }
 
   .back { font-size: 13px; color: #a09d96; text-decoration: none; }
   .back:hover { color: #faf9f5; }
@@ -478,8 +534,11 @@ const placed = media.map((item, i) => ({
     top: 0;
     left: 0;
     transform-origin: 0 0;
-    /* Promoted to its own layer up front so panning never re-rasterises. */
-    will-change: transform;
+    /* Deliberately NO persistent will-change. It freezes the layer as a fixed
+       bitmap that the GPU stretches, so zooming in stays blurry until the hint
+       is removed. Browsers re-rasterise crisply on scale change only when this
+       is absent. It is applied in JS for the duration of a dolly (where speed
+       matters more than sharpness) and cleared the moment it settles. */
   }
 
   .tile {
