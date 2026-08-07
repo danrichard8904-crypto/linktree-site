@@ -4,9 +4,9 @@ import path from 'node:path';
 
 const PORTFOLIO_DIR = path.join(process.cwd(), 'public/photos/portfolio');
 const IMAGE_EXT = new Set(['.jpg', '.jpeg', '.png', '.webp']);
-const VIDEO_EXT = new Set(['.mp4', '.webm', '.mov']);
+const VIDEO_EXT = new Set(['.mp4', '.webm']);
 
-const items = fs.readdirSync(PORTFOLIO_DIR)
+const media = fs.readdirSync(PORTFOLIO_DIR)
   .filter(name => {
     const ext = path.extname(name).toLowerCase();
     return IMAGE_EXT.has(ext) || VIDEO_EXT.has(ext);
@@ -16,6 +16,62 @@ const items = fs.readdirSync(PORTFOLIO_DIR)
     type: VIDEO_EXT.has(path.extname(name).toLowerCase()) ? 'video' : 'image',
     src: `/linktree-site/photos/portfolio/${name}`,
   }));
+
+// Diamond placement: rows widen toward the middle and taper at both ends.
+// Built from the largest full diamond that fits, with any remainder pushed
+// into the centre rows so the silhouette stays balanced. Never pads with
+// empty cells — the board only ever holds real work.
+function diamondRows(n) {
+  if (n <= 1) return n ? [n] : [];
+  let peak = 1;
+  while ((peak + 1) * (peak + 1) <= n) peak++;
+
+  const rows = [];
+  for (let i = 1; i <= peak; i++) rows.push(i);
+  for (let i = peak - 1; i >= 1; i--) rows.push(i);
+
+  let leftover = n - peak * peak;
+  const mid = Math.floor((rows.length - 1) / 2);
+  let d = 0;
+  while (leftover > 0) {
+    const targets = d === 0 ? [mid] : [mid - d, mid + d];
+    for (const i of targets) {
+      if (leftover <= 0) break;
+      if (i >= 0 && i < rows.length) { rows[i]++; leftover--; }
+    }
+    d = d + 1 > mid ? 0 : d + 1;
+  }
+  return rows;
+}
+
+const TILE_W = 300;
+const TILE_H = 400;
+const GAP_X = 26;
+const GAP_Y = 26;
+const PAD = 60;
+
+const rows = diamondRows(media.length);
+const widest = Math.max(1, ...rows);
+const boardW = widest * TILE_W + (widest - 1) * GAP_X;
+const canvasW = boardW + PAD * 2;
+const canvasH = rows.length * TILE_H + (rows.length - 1) * GAP_Y + PAD * 2;
+
+// Resolve each item to an absolute position inside the diamond.
+const placed = [];
+let cursor = 0;
+rows.forEach((count, r) => {
+  const rowW = count * TILE_W + (count - 1) * GAP_X;
+  const startX = PAD + (boardW - rowW) / 2;
+  for (let c = 0; c < count; c++) {
+    const item = media[cursor++];
+    if (!item) return;
+    placed.push({
+      ...item,
+      x: startX + c * (TILE_W + GAP_X),
+      y: PAD + r * (TILE_H + GAP_Y),
+    });
+  }
+});
 ---
 <!doctype html>
 <html lang="en">
@@ -32,16 +88,13 @@ const items = fs.readdirSync(PORTFOLIO_DIR)
     </header>
 
     <div class="viewport" id="viewport">
-      <div class="canvas" id="canvas">
-        {items.map((item, i) => (
-          <figure class="tile" data-index={i} data-type={item.type} data-src={item.src}>
+      <div class="canvas" id="canvas" style={`width:${canvasW}px;height:${canvasH}px`}>
+        {placed.map(item => (
+          <figure class="tile" data-src={item.src} style={`left:${item.x}px;top:${item.y}px`}>
             {item.type === 'video' ? (
-              <div class="loop-video" data-src={item.src}>
-                <video class="v" muted playsinline preload="auto"></video>
-                <video class="v" muted playsinline preload="auto"></video>
-              </div>
+              <video class="media" src={item.src} muted loop playsinline preload="metadata"></video>
             ) : (
-              <img src={item.src} alt="" draggable="false" />
+              <img class="media" src={item.src} alt="" loading="lazy" decoding="async" draggable="false" />
             )}
           </figure>
         ))}
@@ -56,9 +109,12 @@ const items = fs.readdirSync(PORTFOLIO_DIR)
       const hint = document.getElementById('hint');
       const tiles = Array.from(document.querySelectorAll('.tile'));
 
-      const MIN_SCALE = 0.25;
-      const MAX_SCALE = 4;
+      const MIN_SCALE = 0.18;
+      const MAX_SCALE = 3.5;
       const MAX_BLUR = 7;
+      // Below this zoom every clip is a thumbnail, so decoding them is wasted
+      // work — the single biggest source of pan/zoom jank with this many videos.
+      const PLAYBACK_MIN_SCALE = 0.42;
 
       let scale = 1;
       let tx = 0;
@@ -66,34 +122,51 @@ const items = fs.readdirSync(PORTFOLIO_DIR)
       let animating = false;
       let finishCurrent = null;
 
-      function clamp(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
+      const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 
-      function apply(blur) {
+      // All transform writes funnel through one rAF-batched commit so a burst of
+      // pointermove events (high-refresh mice fire several per frame) can never
+      // trigger more than one style recalc per frame.
+      let frameQueued = false;
+      let pendingBlur = 0;
+
+      function commit() {
+        frameQueued = false;
         canvas.style.transform = `translate3d(${tx}px, ${ty}px, 0) scale(${scale})`;
-        canvas.style.filter = blur > 0.05 ? `blur(${blur}px)` : '';
+        canvas.style.filter = pendingBlur > 0.05 ? `blur(${pendingBlur}px)` : '';
       }
 
-      // Fit the whole board in view on first paint so the full collection reads
-      // at a glance, the way the zoomed-out state does in the reference.
+      function apply(blur) {
+        pendingBlur = blur || 0;
+        if (frameQueued) return;
+        frameQueued = true;
+        requestAnimationFrame(commit);
+      }
+
+      function applyNow(blur) {
+        pendingBlur = blur || 0;
+        commit();
+      }
+
       function fitToViewport() {
         const vw = viewport.clientWidth;
         const vh = viewport.clientHeight;
         const cw = canvas.offsetWidth;
         const ch = canvas.offsetHeight;
-        scale = clamp(Math.min(vw / cw, vh / ch) * 0.92, MIN_SCALE, MAX_SCALE);
+        scale = clamp(Math.min(vw / cw, vh / ch) * 0.94, MIN_SCALE, MAX_SCALE);
         tx = (vw - cw * scale) / 2;
         ty = (vh - ch * scale) / 2;
-        apply(0);
+        applyNow(0);
+        syncPlayback();
       }
 
       function easeInOutCubic(p) {
         return p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
       }
 
-      // The dolly move: position eases along a cubic curve while blur rises and
-      // falls on a sine arc, peaking at maximum travel speed. Blur magnitude is
-      // proportional to distance covered, so small nudges stay crisp and long
-      // pushes smear — the "camera on a cart" feel rather than a hard cut.
+      // The dolly: position eases on a cubic curve while blur rises and falls on
+      // a sine arc, peaking at maximum travel speed. Blur scales with distance
+      // covered, so short hops stay crisp and long pushes smear.
       function glideTo(nextScale, nextTx, nextTy, duration) {
         if (animating) return;
         animating = true;
@@ -104,23 +177,21 @@ const items = fs.readdirSync(PORTFOLIO_DIR)
         const dTy = nextTy - fromTy;
 
         const travel = Math.hypot(dTx, dTy) + Math.abs(dScale) * 400;
-        const blurPeak = clamp(travel / 260, 0, MAX_BLUR);
+        const blurPeak = clamp(travel / 300, 0, MAX_BLUR);
 
         const start = performance.now();
         canvas.style.willChange = 'transform, filter';
 
-        // Jump straight to the destination and release the lock. Browsers
-        // suspend rAF in background tabs, so without this a move interrupted by
-        // a tab switch would leave `animating` stuck true and kill every
-        // subsequent zoom.
+        // Browsers suspend rAF in background tabs. Without this escape hatch a
+        // move interrupted by a tab switch would leave `animating` stuck true
+        // and kill every later zoom.
         finishCurrent = () => {
           finishCurrent = null;
-          scale = nextScale;
-          tx = nextTx;
-          ty = nextTy;
-          apply(0);
+          scale = nextScale; tx = nextTx; ty = nextTy;
+          applyNow(0);
           canvas.style.willChange = '';
           animating = false;
+          syncPlayback();
         };
 
         function frame(now) {
@@ -131,8 +202,7 @@ const items = fs.readdirSync(PORTFOLIO_DIR)
           scale = fromScale + dScale * eased;
           tx = fromTx + dTx * eased;
           ty = fromTy + dTy * eased;
-
-          apply(Math.sin(p * Math.PI) * blurPeak);
+          applyNow(Math.sin(p * Math.PI) * blurPeak);
 
           if (p < 1) {
             requestAnimationFrame(frame);
@@ -140,6 +210,7 @@ const items = fs.readdirSync(PORTFOLIO_DIR)
             finishCurrent = null;
             canvas.style.willChange = '';
             animating = false;
+            syncPlayback();
           }
         }
         requestAnimationFrame(frame);
@@ -149,48 +220,37 @@ const items = fs.readdirSync(PORTFOLIO_DIR)
         if (document.hidden && finishCurrent) finishCurrent();
       });
 
-      // Compute the transform that centers a given tile at a given scale.
-      function framingFor(tile, targetScale) {
-        const vw = viewport.clientWidth;
-        const vh = viewport.clientHeight;
-        // Tile offsets are in unscaled canvas space.
-        const cx = tile.offsetLeft + tile.offsetWidth / 2;
-        const cy = tile.offsetTop + tile.offsetHeight / 2;
-        return {
-          tx: vw / 2 - cx * targetScale,
-          ty: vh / 2 - cy * targetScale,
-        };
-      }
-
       function scaleToFill(tile) {
         const vw = viewport.clientWidth;
         const vh = viewport.clientHeight;
-        const pad = 0.86;
         return clamp(
-          Math.min(vw / tile.offsetWidth, vh / tile.offsetHeight) * pad,
+          Math.min(vw / tile.offsetWidth, vh / tile.offsetHeight) * 0.86,
           MIN_SCALE,
           MAX_SCALE
         );
       }
 
       function pushInto(tile) {
+        const vw = viewport.clientWidth;
+        const vh = viewport.clientHeight;
         const target = scaleToFill(tile);
-        // Already framed on this tile? Pull back out to the full board instead,
-        // so double-tap toggles rather than dead-ends.
+
+        // Already framed on this tile — pull back to the whole board so the
+        // gesture toggles instead of dead-ending.
         if (Math.abs(scale - target) < 0.05) {
-          const vw = viewport.clientWidth, vh = viewport.clientHeight;
           const cw = canvas.offsetWidth, ch = canvas.offsetHeight;
-          const outScale = clamp(Math.min(vw / cw, vh / ch) * 0.92, MIN_SCALE, MAX_SCALE);
-          glideTo(outScale, (vw - cw * outScale) / 2, (vh - ch * outScale) / 2, 760);
+          const out = clamp(Math.min(vw / cw, vh / ch) * 0.94, MIN_SCALE, MAX_SCALE);
+          glideTo(out, (vw - cw * out) / 2, (vh - ch * out) / 2, 780);
           return;
         }
-        const f = framingFor(tile, target);
-        glideTo(target, f.tx, f.ty, 760);
+
+        const cx = tile.offsetLeft + tile.offsetWidth / 2;
+        const cy = tile.offsetTop + tile.offsetHeight / 2;
+        glideTo(target, vw / 2 - cx * target, vh / 2 - cy * target, 780);
       }
 
-      // Pointer capture taken during a drag retargets mouse events to the
-      // viewport, so a dblclick bound to a tile never reaches it. Delegate from
-      // the viewport and resolve the tile from the event target instead.
+      // Pointer capture during a drag retargets mouse events to the viewport, so
+      // a dblclick bound to a tile never reaches it. Delegate instead.
       viewport.addEventListener('dblclick', (e) => {
         const tile = e.target.closest('.tile');
         if (!tile) return;
@@ -198,33 +258,19 @@ const items = fs.readdirSync(PORTFOLIO_DIR)
         pushInto(tile);
       });
 
-      // Touch devices do not reliably emit dblclick, so detect the double-tap.
-      let lastTapAt = 0;
-      let lastTapX = 0;
-      let lastTapY = 0;
-      viewport.addEventListener('pointerup', (e) => {
-        if (e.pointerType === 'mouse' || moved) return;
-        const now = performance.now();
-        const near = Math.hypot(e.clientX - lastTapX, e.clientY - lastTapY) < 30;
-        if (now - lastTapAt < 320 && near) {
-          const el = document.elementFromPoint(e.clientX, e.clientY);
-          const tile = el && el.closest('.tile');
-          if (tile) pushInto(tile);
-          lastTapAt = 0;
-        } else {
-          lastTapAt = now;
-          lastTapX = e.clientX;
-          lastTapY = e.clientY;
-        }
-      });
+      // Images and videos are the browser's favourite drag targets. Killing the
+      // native drag is what stops a pan turning into "grabbed a photo".
+      viewport.addEventListener('dragstart', (e) => e.preventDefault());
 
       // --- Drag to pan -------------------------------------------------------
       let dragging = false;
       let moved = false;
       let lastX = 0, lastY = 0;
-      let activePointers = new Map();
+      const activePointers = new Map();
+      let pinchStart = null;
 
       viewport.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
         activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
         if (activePointers.size === 1) {
           dragging = true;
@@ -240,10 +286,7 @@ const items = fs.readdirSync(PORTFOLIO_DIR)
         if (!activePointers.has(e.pointerId)) return;
         activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
-        if (activePointers.size === 2) {
-          handlePinch();
-          return;
-        }
+        if (activePointers.size === 2) { handlePinch(); return; }
         if (!dragging || animating) return;
 
         const dx = e.clientX - lastX;
@@ -263,14 +306,13 @@ const items = fs.readdirSync(PORTFOLIO_DIR)
         if (activePointers.size === 0) {
           dragging = false;
           viewport.classList.remove('grabbing');
+          syncPlayback();
         }
       }
       viewport.addEventListener('pointerup', endPointer);
       viewport.addEventListener('pointercancel', endPointer);
 
-      // --- Pinch to zoom -----------------------------------------------------
-      let pinchStart = null;
-
+      // --- Pinch -------------------------------------------------------------
       function handlePinch() {
         if (animating) return;
         const pts = Array.from(activePointers.values());
@@ -278,13 +320,9 @@ const items = fs.readdirSync(PORTFOLIO_DIR)
         const midX = (pts[0].x + pts[1].x) / 2;
         const midY = (pts[0].y + pts[1].y) / 2;
 
-        if (!pinchStart) {
-          pinchStart = { dist, scale, midX, midY };
-          return;
-        }
+        if (!pinchStart) { pinchStart = { dist, scale }; return; }
 
-        const nextScale = clamp(pinchStart.scale * (dist / pinchStart.dist), MIN_SCALE, MAX_SCALE);
-        zoomAround(midX, midY, nextScale);
+        zoomAround(midX, midY, clamp(pinchStart.scale * (dist / pinchStart.dist), MIN_SCALE, MAX_SCALE));
         dismissHint();
       }
 
@@ -300,15 +338,34 @@ const items = fs.readdirSync(PORTFOLIO_DIR)
         apply(0);
       }
 
-      // --- Wheel / trackpad zoom --------------------------------------------
+      // --- Wheel / trackpad --------------------------------------------------
+      let wheelSettle = null;
       viewport.addEventListener('wheel', (e) => {
         e.preventDefault();
         if (animating) return;
-        const factor = Math.exp(-e.deltaY * 0.0022);
-        const nextScale = clamp(scale * factor, MIN_SCALE, MAX_SCALE);
-        zoomAround(e.clientX, e.clientY, nextScale);
+        zoomAround(e.clientX, e.clientY, clamp(scale * Math.exp(-e.deltaY * 0.0022), MIN_SCALE, MAX_SCALE));
         dismissHint();
+        clearTimeout(wheelSettle);
+        wheelSettle = setTimeout(syncPlayback, 140);
       }, { passive: false });
+
+      // --- Double-tap (touch) ------------------------------------------------
+      let lastTapAt = 0, lastTapX = 0, lastTapY = 0;
+      viewport.addEventListener('pointerup', (e) => {
+        if (e.pointerType === 'mouse' || moved) return;
+        const now = performance.now();
+        const near = Math.hypot(e.clientX - lastTapX, e.clientY - lastTapY) < 30;
+        if (now - lastTapAt < 320 && near) {
+          const el = document.elementFromPoint(e.clientX, e.clientY);
+          const tile = el && el.closest('.tile');
+          if (tile) pushInto(tile);
+          lastTapAt = 0;
+        } else {
+          lastTapAt = now;
+          lastTapX = e.clientX;
+          lastTapY = e.clientY;
+        }
+      });
 
       // --- Hint --------------------------------------------------------------
       let hintGone = false;
@@ -319,67 +376,45 @@ const items = fs.readdirSync(PORTFOLIO_DIR)
       }
       setTimeout(dismissHint, 6000);
 
-      // --- Video loops -------------------------------------------------------
-      // Dual-buffer crossfade: the visible video is never seeked (seeking is what
-      // caused decode corruption at the loop point). A hidden twin restarts and
-      // takes over. Opacity is set inline because Astro's scoped-CSS attribute
-      // is not guaranteed on every path that touches these nodes.
-      const SWAP_BEFORE = 0.15;
+      // --- Playback budget ---------------------------------------------------
+      // Only clips that are both on screen and large enough to be worth watching
+      // are allowed to decode. Everything else holds a still frame.
+      const videoTiles = tiles.filter(t => t.querySelector('video'));
+      const onScreen = new Set();
 
-      function startLoopVideo(container) {
-        const src = container.dataset.src;
-        const [a, b] = container.querySelectorAll('video');
-        a.src = src;
-        b.src = src;
-
-        function setActive(video, active) {
-          video.classList.toggle('active', active);
-          video.style.opacity = active ? '1' : '0';
+      const io = new IntersectionObserver((entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) onScreen.add(entry.target);
+          else onScreen.delete(entry.target);
         }
+        syncPlayback();
+      }, { root: viewport, rootMargin: '120px' });
 
-        // play() called right after setting .src rejects while the element still
-        // has no data. Retry once the browser reports it can actually play.
-        function tryPlay(video) {
-          const p = video.play();
-          if (p && p.catch) {
-            p.catch(() => {
-              video.addEventListener('canplay', () => {
-                video.play().catch(() => {});
-              }, { once: true });
-            });
-          }
-        }
+      videoTiles.forEach(t => io.observe(t));
 
-        function arm(active, standby) {
-          function onTimeUpdate() {
-            if (active.duration && active.currentTime >= active.duration - SWAP_BEFORE) {
-              active.removeEventListener('timeupdate', onTimeUpdate);
-              standby.currentTime = 0;
-              tryPlay(standby);
-              setActive(standby, true);
-              setActive(active, false);
-              setTimeout(() => {
-                active.pause();
-                active.currentTime = 0;
-              }, 120);
-              arm(standby, active);
+      let syncQueued = false;
+      function syncPlayback() {
+        if (syncQueued) return;
+        syncQueued = true;
+        requestAnimationFrame(() => {
+          syncQueued = false;
+          const allowed = scale >= PLAYBACK_MIN_SCALE;
+          for (const tile of videoTiles) {
+            const video = tile.querySelector('video');
+            const shouldPlay = allowed && onScreen.has(tile);
+            if (shouldPlay && video.paused) {
+              const p = video.play();
+              if (p && p.catch) p.catch(() => {});
+            } else if (!shouldPlay && !video.paused) {
+              video.pause();
             }
           }
-          active.addEventListener('timeupdate', onTimeUpdate);
-        }
-
-        setActive(a, true);
-        tryPlay(a);
-        arm(a, b);
+        });
       }
 
-      document.querySelectorAll('.loop-video').forEach(startLoopVideo);
-
       // --- Init --------------------------------------------------------------
-      function init() { fitToViewport(); }
-
-      if (document.readyState === 'complete') init();
-      else window.addEventListener('load', init);
+      if (document.readyState === 'complete') fitToViewport();
+      else window.addEventListener('load', fitToViewport);
       window.addEventListener('resize', fitToViewport);
     </script>
   </body>
@@ -397,24 +432,18 @@ const items = fs.readdirSync(PORTFOLIO_DIR)
 
   .topbar {
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
+    top: 0; left: 0; right: 0;
     z-index: 10;
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 14px 18px;
-    background: linear-gradient(180deg, rgba(20,20,19,0.9) 0%, rgba(20,20,19,0) 100%);
+    background: linear-gradient(180deg, rgba(20,20,19,0.92) 0%, rgba(20,20,19,0) 100%);
     pointer-events: none;
   }
   .topbar a { pointer-events: auto; }
 
-  .back {
-    font-size: 13px;
-    color: #a09d96;
-    text-decoration: none;
-  }
+  .back { font-size: 13px; color: #a09d96; text-decoration: none; }
   .back:hover { color: #faf9f5; }
 
   .subtitle {
@@ -436,10 +465,7 @@ const items = fs.readdirSync(PORTFOLIO_DIR)
     padding: 6px 14px;
     transition: border-color 0.15s ease, background 0.15s ease;
   }
-  .book-mini:hover {
-    border-color: #e8a55a;
-    background: rgba(232,165,90,0.12);
-  }
+  .book-mini:hover { border-color: #e8a55a; background: rgba(232,165,90,0.12); }
 
   .viewport {
     position: fixed;
@@ -447,8 +473,9 @@ const items = fs.readdirSync(PORTFOLIO_DIR)
     overflow: hidden;
     cursor: grab;
     touch-action: none;
-    background:
-      radial-gradient(ellipse at 50% 40%, #1f1e1b 0%, #141413 70%);
+    user-select: none;
+    -webkit-user-select: none;
+    background: radial-gradient(ellipse at 50% 40%, #201f1c 0%, #141413 72%);
   }
   .viewport.grabbing { cursor: grabbing; }
 
@@ -456,49 +483,36 @@ const items = fs.readdirSync(PORTFOLIO_DIR)
     position: absolute;
     top: 0;
     left: 0;
-    width: 1100px;
     transform-origin: 0 0;
-    column-count: 3;
-    column-gap: 18px;
-    padding: 18px;
-    box-sizing: border-box;
+    /* Promoted to its own layer up front so panning never re-rasterises. */
+    will-change: transform;
   }
 
   .tile {
-    break-inside: avoid;
-    margin: 0 0 18px;
-    border-radius: 14px;
+    position: absolute;
+    width: 300px;
+    height: 400px;
+    margin: 0;
+    border-radius: 16px;
     overflow: hidden;
     background: #1f1e1b;
-    box-shadow: 0 18px 40px rgba(0,0,0,0.45);
-    position: relative;
-    line-height: 0;
+    box-shadow: 0 20px 44px rgba(0,0,0,0.5);
+    /* Lets the browser skip layout/paint for tiles that are off screen. */
+    content-visibility: auto;
+    contain-intrinsic-size: 300px 400px;
   }
 
-  .tile img,
-  .tile video {
-    width: 100%;
-    height: auto;
-    display: block;
-    user-select: none;
-    -webkit-user-drag: none;
-  }
-
-  .loop-video {
-    position: relative;
-    width: 100%;
-    /* Portrait clips: reserve height so masonry does not jump before metadata. */
-    aspect-ratio: 9 / 16;
-  }
-  .loop-video .v {
-    position: absolute;
-    inset: 0;
+  .media {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    opacity: 0;
+    display: block;
+    /* Media never receives pointer events, so a click-drag can never latch onto
+       a photo instead of panning the board. */
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-drag: none;
   }
-  .loop-video .v.active { opacity: 1; }
 
   .hint {
     position: fixed;
@@ -517,12 +531,5 @@ const items = fs.readdirSync(PORTFOLIO_DIR)
     transition: opacity 0.5s ease, transform 0.5s ease;
     pointer-events: none;
   }
-  .hint.gone {
-    opacity: 0;
-    transform: translateX(-50%) translateY(8px);
-  }
-
-  @media (min-width: 860px) {
-    .canvas { column-count: 4; width: 1500px; }
-  }
+  .hint.gone { opacity: 0; transform: translateX(-50%) translateY(8px); }
 </style>
