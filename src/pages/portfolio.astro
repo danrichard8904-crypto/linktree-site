@@ -17,61 +17,68 @@ const media = fs.readdirSync(PORTFOLIO_DIR)
     src: `/linktree-site/photos/portfolio/${name}`,
   }));
 
-// Diamond placement: rows widen toward the middle and taper at both ends.
-// Built from the largest full diamond that fits, with any remainder pushed
-// into the centre rows so the silhouette stays balanced. Never pads with
-// empty cells — the board only ever holds real work.
-function diamondRows(n) {
-  if (n <= 1) return n ? [n] : [];
-  let peak = 1;
-  while ((peak + 1) * (peak + 1) <= n) peak++;
-
-  const rows = [];
-  for (let i = 1; i <= peak; i++) rows.push(i);
-  for (let i = peak - 1; i >= 1; i--) rows.push(i);
-
-  let leftover = n - peak * peak;
-  const mid = Math.floor((rows.length - 1) / 2);
-  let d = 0;
-  while (leftover > 0) {
-    const targets = d === 0 ? [mid] : [mid - d, mid + d];
-    for (const i of targets) {
-      if (leftover <= 0) break;
-      if (i >= 0 && i < rows.length) { rows[i]++; leftover--; }
-    }
-    d = d + 1 > mid ? 0 : d + 1;
-  }
-  return rows;
-}
-
 const TILE_W = 300;
 const TILE_H = 400;
-const GAP_X = 26;
-const GAP_Y = 26;
-const PAD = 60;
+const STEP_X = 330;
+const STEP_Y = 320;
+const PAD = 80;
 
-const rows = diamondRows(media.length);
-const widest = Math.max(1, ...rows);
-const boardW = widest * TILE_W + (widest - 1) * GAP_X;
-const canvasW = boardW + PAD * 2;
-const canvasH = rows.length * TILE_H + (rows.length - 1) * GAP_Y + PAD * 2;
+// Diamond pattern: tiles sit on the perimeter only — one at each cardinal
+// point (north / east / south / west) with the middle left open. Edge tiles
+// advance in whole grid steps out from each corner, which guarantees
+// neighbours are always a full step apart and can never overlap.
+function diamondPositions(n) {
+  if (n <= 0) return [];
 
-// Resolve each item to an absolute position inside the diamond.
-const placed = [];
-let cursor = 0;
-rows.forEach((count, r) => {
-  const rowW = count * TILE_W + (count - 1) * GAP_X;
-  const startX = PAD + (boardW - rowW) / 2;
-  for (let c = 0; c < count; c++) {
-    const item = media[cursor++];
-    if (!item) return;
-    placed.push({
-      ...item,
-      x: startX + c * (TILE_W + GAP_X),
-      y: PAD + r * (TILE_H + GAP_Y),
-    });
+  const cardinals = [
+    { gx: 0, gy: -1 }, { gx: 1, gy: 0 }, { gx: 0, gy: 1 }, { gx: -1, gy: 0 },
+  ];
+  if (n <= 4) return cardinals.slice(0, n);
+
+  const radius = Math.ceil(n / 4);
+  const corners = [
+    { gx: 0, gy: -radius }, // N
+    { gx: radius, gy: 0 },  // E
+    { gx: 0, gy: radius },  // S
+    { gx: -radius, gy: 0 }, // W
+  ];
+  const dirs = [
+    { dx: 1, dy: 1 }, { dx: -1, dy: 1 }, { dx: -1, dy: -1 }, { dx: 1, dy: -1 },
+  ];
+
+  // Spread the non-corner tiles evenly around the four edges.
+  const perEdge = [0, 0, 0, 0];
+  let remaining = n - 4;
+  let e = 0;
+  while (remaining > 0 && perEdge.some(c => c < radius - 1)) {
+    if (perEdge[e] < radius - 1) { perEdge[e]++; remaining--; }
+    e = (e + 1) % 4;
   }
-});
+
+  const out = [];
+  for (let i = 0; i < 4; i++) {
+    out.push(corners[i]);
+    for (let s = 1; s <= perEdge[i]; s++) {
+      out.push({
+        gx: corners[i].gx + dirs[i].dx * s,
+        gy: corners[i].gy + dirs[i].dy * s,
+      });
+    }
+  }
+  return out;
+}
+
+const slots = diamondPositions(media.length);
+const radius = Math.max(1, ...slots.map(s => Math.max(Math.abs(s.gx), Math.abs(s.gy))));
+
+const canvasW = radius * 2 * STEP_X + TILE_W + PAD * 2;
+const canvasH = radius * 2 * STEP_Y + TILE_H + PAD * 2;
+
+const placed = media.map((item, i) => ({
+  ...item,
+  x: PAD + (slots[i].gx + radius) * STEP_X,
+  y: PAD + (slots[i].gy + radius) * STEP_Y,
+}));
 ---
 <!doctype html>
 <html lang="en">
