@@ -17,21 +17,27 @@
       </header>
 
       <div class="grid">
-        <div class="slot" style="--i:0"><img src="/linktree-site/photos/IMG_4542.jpg" alt="" /></div>
-        <div class="slot" style="--i:1"><img src="/linktree-site/photos/IMG_4950.jpg" alt="" /></div>
-        <div class="slot loop-video" style="--i:2" data-src="/linktree-site/photos/IMG_5008.mp4">
+        <button class="slot" style="--i:0" data-type="image" data-src="/linktree-site/photos/IMG_4542.jpg" aria-label="Open photo">
+          <img src="/linktree-site/photos/IMG_4542.jpg" alt="" />
+        </button>
+        <button class="slot" style="--i:1" data-type="image" data-src="/linktree-site/photos/IMG_4950.jpg" aria-label="Open photo">
+          <img src="/linktree-site/photos/IMG_4950.jpg" alt="" />
+        </button>
+        <button class="slot loop-video" style="--i:2" data-type="video" data-src="/linktree-site/photos/IMG_5008.mp4" aria-label="Open video">
           <video class="v" muted playsinline preload="auto"></video>
           <video class="v" muted playsinline preload="auto"></video>
-        </div>
-        <div class="slot loop-video" style="--i:3" data-src="/linktree-site/photos/IMG_4355.mp4">
+        </button>
+        <button class="slot loop-video" style="--i:3" data-type="video" data-src="/linktree-site/photos/IMG_4355.mp4" aria-label="Open video">
           <video class="v" muted playsinline preload="auto"></video>
           <video class="v" muted playsinline preload="auto"></video>
-        </div>
-        <div class="slot" style="--i:4"><img src="/linktree-site/photos/IMG_4966.jpg" alt="" /></div>
-        <div class="slot loop-video" style="--i:5" data-src="/linktree-site/photos/IMG_5030.mp4">
+        </button>
+        <button class="slot" style="--i:4" data-type="image" data-src="/linktree-site/photos/IMG_4966.jpg" aria-label="Open photo">
+          <img src="/linktree-site/photos/IMG_4966.jpg" alt="" />
+        </button>
+        <button class="slot loop-video" style="--i:5" data-type="video" data-src="/linktree-site/photos/IMG_5030.mp4" aria-label="Open video">
           <video class="v" muted playsinline preload="auto"></video>
           <video class="v" muted playsinline preload="auto"></video>
-        </div>
+        </button>
       </div>
 
       <section class="bio-section">
@@ -53,13 +59,20 @@
       </footer>
     </main>
 
+    <div class="lightbox" id="lightbox" aria-hidden="true">
+      <button class="lb-close" aria-label="Close">✕</button>
+      <button class="lb-nav lb-prev" aria-label="Previous">‹</button>
+      <button class="lb-nav lb-next" aria-label="Next">›</button>
+      <div class="lb-content" id="lbContent"></div>
+    </div>
+
     <script>
       // Seamless loop via dual-buffer crossfade: the visible video is never
       // seeked (that's what caused the decode corruption at the loop point).
       // A hidden twin restarts and takes over instead.
       const SWAP_BEFORE = 0.15;
 
-      document.querySelectorAll('.loop-video').forEach(container => {
+      function startLoopVideo(container) {
         const src = container.dataset.src;
         const [a, b] = container.querySelectorAll('video');
         a.src = src;
@@ -86,6 +99,93 @@
         a.classList.add('active');
         a.play().catch(() => {});
         arm(a, b);
+      }
+
+      document.querySelectorAll('.grid .loop-video').forEach(startLoopVideo);
+
+      // Lightbox: tap a grid item to expand full-screen, swipe/arrows to move
+      // between items, tap outside or Escape/close to dismiss.
+      const slots = Array.from(document.querySelectorAll('.grid .slot'));
+      const items = slots.map(slot => ({
+        type: slot.dataset.type,
+        src: slot.dataset.src,
+      }));
+
+      const lightbox = document.getElementById('lightbox');
+      const lbContent = document.getElementById('lbContent');
+      let currentIndex = 0;
+      let isOpen = false;
+
+      function renderLightboxItem(index) {
+        lbContent.innerHTML = '';
+        const item = items[index];
+        if (item.type === 'video') {
+          const container = document.createElement('div');
+          container.className = 'loop-video lb-video';
+          container.dataset.src = item.src;
+          container.innerHTML = '<video class="v" muted playsinline preload="auto"></video><video class="v" muted playsinline preload="auto"></video>';
+          lbContent.appendChild(container);
+          startLoopVideo(container);
+        } else {
+          const img = document.createElement('img');
+          img.src = item.src;
+          img.alt = '';
+          lbContent.appendChild(img);
+        }
+      }
+
+      function openLightbox(index) {
+        currentIndex = index;
+        renderLightboxItem(currentIndex);
+        lightbox.classList.add('open');
+        lightbox.setAttribute('aria-hidden', 'false');
+        isOpen = true;
+      }
+
+      function closeLightbox() {
+        lightbox.classList.remove('open');
+        lightbox.setAttribute('aria-hidden', 'true');
+        lbContent.innerHTML = '';
+        isOpen = false;
+      }
+
+      function showNext() {
+        currentIndex = (currentIndex + 1) % items.length;
+        renderLightboxItem(currentIndex);
+      }
+
+      function showPrev() {
+        currentIndex = (currentIndex - 1 + items.length) % items.length;
+        renderLightboxItem(currentIndex);
+      }
+
+      slots.forEach((slot, index) => {
+        slot.addEventListener('click', () => openLightbox(index));
+      });
+
+      document.querySelector('.lb-close').addEventListener('click', closeLightbox);
+      document.querySelector('.lb-next').addEventListener('click', showNext);
+      document.querySelector('.lb-prev').addEventListener('click', showPrev);
+
+      lightbox.addEventListener('click', (e) => {
+        if (e.target === lightbox) closeLightbox();
+      });
+
+      document.addEventListener('keydown', (e) => {
+        if (!isOpen) return;
+        if (e.key === 'Escape') closeLightbox();
+        if (e.key === 'ArrowRight') showNext();
+        if (e.key === 'ArrowLeft') showPrev();
+      });
+
+      let touchStartX = 0;
+      lbContent.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].clientX;
+      });
+      lbContent.addEventListener('touchend', (e) => {
+        const deltaX = e.changedTouches[0].clientX - touchStartX;
+        if (deltaX > 50) showPrev();
+        else if (deltaX < -50) showNext();
       });
     </script>
   </body>
@@ -156,6 +256,11 @@
     aspect-ratio: 1;
     overflow: hidden;
     background: #1f1e1b;
+    border: none;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    display: block;
   }
 
   .slot img,
@@ -264,5 +369,100 @@
   .book-full:active {
     transform: translate(4px, 4px);
     box-shadow: 1px 1px 0 0 #141413;
+  }
+
+  /* Lightbox */
+  .lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: rgba(10,10,9,0.96);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  .lightbox.open {
+    display: flex;
+    opacity: 1;
+  }
+
+  .lb-content {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    box-sizing: border-box;
+  }
+  .lb-content img,
+  .lb-content .lb-video {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border-radius: 8px;
+  }
+  .lb-content .lb-video {
+    position: relative;
+    aspect-ratio: 1;
+    max-height: 100%;
+  }
+  .lb-content .lb-video .v {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    opacity: 0;
+  }
+  .lb-content .lb-video .v.active {
+    opacity: 1;
+  }
+
+  .lb-close,
+  .lb-nav {
+    position: absolute;
+    z-index: 101;
+    background: rgba(20,20,19,0.55);
+    color: #faf9f5;
+    border: 1px solid rgba(250,249,245,0.25);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: border-color 0.15s ease;
+  }
+  .lb-close:hover,
+  .lb-nav:hover {
+    border-color: rgba(232,165,90,0.9);
+  }
+
+  .lb-close {
+    top: 16px;
+    right: 16px;
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+  }
+
+  .lb-nav {
+    top: 50%;
+    transform: translateY(-50%);
+    width: 48px;
+    height: 48px;
+    font-size: 26px;
+  }
+  .lb-prev { left: 12px; }
+  .lb-next { right: 12px; }
+
+  @media (min-width: 860px) {
+    .lb-close { top: 24px; right: 24px; }
+    .lb-prev { left: 24px; }
+    .lb-next { right: 24px; }
   }
 </style>
