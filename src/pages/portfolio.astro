@@ -64,6 +64,7 @@ const items = fs.readdirSync(PORTFOLIO_DIR)
       let tx = 0;
       let ty = 0;
       let animating = false;
+      let finishCurrent = null;
 
       function clamp(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
 
@@ -108,7 +109,22 @@ const items = fs.readdirSync(PORTFOLIO_DIR)
         const start = performance.now();
         canvas.style.willChange = 'transform, filter';
 
+        // Jump straight to the destination and release the lock. Browsers
+        // suspend rAF in background tabs, so without this a move interrupted by
+        // a tab switch would leave `animating` stuck true and kill every
+        // subsequent zoom.
+        finishCurrent = () => {
+          finishCurrent = null;
+          scale = nextScale;
+          tx = nextTx;
+          ty = nextTy;
+          apply(0);
+          canvas.style.willChange = '';
+          animating = false;
+        };
+
         function frame(now) {
+          if (!animating) return;
           const p = clamp((now - start) / duration, 0, 1);
           const eased = easeInOutCubic(p);
 
@@ -121,12 +137,17 @@ const items = fs.readdirSync(PORTFOLIO_DIR)
           if (p < 1) {
             requestAnimationFrame(frame);
           } else {
+            finishCurrent = null;
             canvas.style.willChange = '';
             animating = false;
           }
         }
         requestAnimationFrame(frame);
       }
+
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden && finishCurrent) finishCurrent();
+      });
 
       // Compute the transform that centers a given tile at a given scale.
       function framingFor(tile, targetScale) {
