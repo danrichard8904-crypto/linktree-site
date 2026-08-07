@@ -167,11 +167,34 @@ const items = fs.readdirSync(PORTFOLIO_DIR)
         glideTo(target, f.tx, f.ty, 760);
       }
 
-      tiles.forEach(tile => {
-        tile.addEventListener('dblclick', (e) => {
-          e.preventDefault();
-          pushInto(tile);
-        });
+      // Pointer capture taken during a drag retargets mouse events to the
+      // viewport, so a dblclick bound to a tile never reaches it. Delegate from
+      // the viewport and resolve the tile from the event target instead.
+      viewport.addEventListener('dblclick', (e) => {
+        const tile = e.target.closest('.tile');
+        if (!tile) return;
+        e.preventDefault();
+        pushInto(tile);
+      });
+
+      // Touch devices do not reliably emit dblclick, so detect the double-tap.
+      let lastTapAt = 0;
+      let lastTapX = 0;
+      let lastTapY = 0;
+      viewport.addEventListener('pointerup', (e) => {
+        if (e.pointerType === 'mouse' || moved) return;
+        const now = performance.now();
+        const near = Math.hypot(e.clientX - lastTapX, e.clientY - lastTapY) < 30;
+        if (now - lastTapAt < 320 && near) {
+          const el = document.elementFromPoint(e.clientX, e.clientY);
+          const tile = el && el.closest('.tile');
+          if (tile) pushInto(tile);
+          lastTapAt = 0;
+        } else {
+          lastTapAt = now;
+          lastTapX = e.clientX;
+          lastTapY = e.clientY;
+        }
       });
 
       // --- Drag to pan -------------------------------------------------------
@@ -293,12 +316,25 @@ const items = fs.readdirSync(PORTFOLIO_DIR)
           video.style.opacity = active ? '1' : '0';
         }
 
+        // play() called right after setting .src rejects while the element still
+        // has no data. Retry once the browser reports it can actually play.
+        function tryPlay(video) {
+          const p = video.play();
+          if (p && p.catch) {
+            p.catch(() => {
+              video.addEventListener('canplay', () => {
+                video.play().catch(() => {});
+              }, { once: true });
+            });
+          }
+        }
+
         function arm(active, standby) {
           function onTimeUpdate() {
             if (active.duration && active.currentTime >= active.duration - SWAP_BEFORE) {
               active.removeEventListener('timeupdate', onTimeUpdate);
               standby.currentTime = 0;
-              standby.play().catch(() => {});
+              tryPlay(standby);
               setActive(standby, true);
               setActive(active, false);
               setTimeout(() => {
@@ -312,7 +348,7 @@ const items = fs.readdirSync(PORTFOLIO_DIR)
         }
 
         setActive(a, true);
-        a.play().catch(() => {});
+        tryPlay(a);
         arm(a, b);
       }
 
