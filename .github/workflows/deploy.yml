@@ -1,0 +1,182 @@
+# Destination: .github/workflows/deploy.yml  (commit from the OPERATOR's account —
+# the agent's fine-grained PAT deliberately lacks the `workflows` permission, so it
+# is structurally incapable of creating or amending this file. That is load-bearing:
+# the "workflow-owned gate" step below is the part of the deploy gate the agent
+# cannot reach.)
+#
+# MEASURED preconditions (2026-08-07, all verified, not assumed):
+#   astro ^7.1.6 (package.json) · package-lock.json present (npm ci is valid)
+#   site: https://danrichard8904-crypto.github.io  base: /linktree-site (astro.config.mjs)
+#   GH Pages: build_type=legacy, source={branch: gh-pages, path: /}   (gh api .../pages)
+#   default branch: master · repo public · rulesets: [] (none yet)
+#   dev host node v24.15.0 (NOT 22 as the brief stated — corrected)
+#   dist/ is gitignored on master, so it is published via a detached worktree
+#   gh-pages HEAD tree = [.nojekyll, _astro, index.html, photos, portfolio]
+#   dist/ does NOT contain .nojekyll and public/ does NOT contain it either —
+#     it survives today only because past deploys were additive. A --delete sync
+#     would remove it and Jekyll would then strip _astro/, 404-ing the portfolio
+#     page's only script. This workflow recreates it explicitly. DO NOT REMOVE.
+
+name: Deploy to GitHub Pages
+
+# push-to-master ONLY. Never `pull_request_target` and never `pull_request` with a
+# write token: both run with repository write credentials while checking out
+# attacker-authored code from a fork (the "pwn request" pattern). A PR here is
+# validated by the human merge, not by CI.
+on:
+  push:
+    branches: [master]
+
+# Least privilege at the workflow level; nothing here needs more than read.
+# The single job below raises itself to `contents: write`, which is exactly and
+# only what pushing the built site to the gh-pages branch requires.
+# NOT granted, deliberately:
+#   pages: write / id-token: write -> only needed for build_type=workflow
+#     (the Pages deployment API). This repo is build_type=legacy: publishing IS
+#     a branch push, so the Pages permission would be unused standing privilege.
+#   actions: write, packages: *, attestations: * -> no consumer.
+permissions:
+  contents: read
+
+# One deploy at a time. `cancel-in-progress: false` is deliberate: a run may be
+# mid-`git push` and killing it there is the one moment that can leave gh-pages
+# in a half-written state. Queued runs serialise, and GitHub keeps only the
+# newest pending run per group, so the newest master commit is still the last
+# thing published.
+concurrency:
+  group: deploy-gh-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # push the built site to the gh-pages branch
+    steps:
+      # Action pinning: full 40-char commit SHA, with the tag it resolved to in a
+      # trailing comment. A tag (even a major like `v7`) is a mutable pointer the
+      # action's owner can move; a SHA is immutable. Both SHAs below were read
+      # from the GitHub API on 2026-08-07, not from memory:
+      #   gh api repos/actions/checkout/commits/v7.0.1  --jq .sha
+      #   gh api repos/actions/setup-node/commits/v7.0.0 --jq .sha
+      # Only first-party `actions/*` are used. A third-party publish action
+      # (e.g. peaceiris/actions-gh-pages) was considered and rejected: it would
+      # execute vendor code inside the one job that holds `contents: write`,
+      # and the publish is ~10 lines of git.
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Do NOT leave the job token in .git/config. `npm ci` runs arbitrary
+          # lifecycle scripts from the dependency tree; with persist-credentials
+          # off, GITHUB_TOKEN never touches the disk or the environment during
+          # the build, and is interpolated only into the final push step.
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          # Pinned to the exact version of the dev host that produced the
+          # currently-live, human-verified build (measured: node v24.15.0).
+          node-version: '24.15.0'
+          cache: npm
+
+      - name: Install (locked)
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      # ---- GATE 1: the repository's own verification script -----------------
+      # Lives in the repo, so it is reviewable and editable through a PR. It is
+      # NOT bypassable by this workflow: no `continue-on-error`, no `|| true`,
+      # no `if:` condition. GitHub runs `run:` blocks as `bash -e`, so a non-zero
+      # exit fails the job and every later step (including the publish) is
+      # skipped. A missing script is treated as a failure, not as "no checks".
+      - name: Gate 1 — repo verify-page.sh
+        run: |
+          set -euo pipefail
+          if [ ! -f ./verify-page.sh ]; then
+            echo "::error::verify-page.sh is missing — refusing to deploy."
+            exit 1
+          fi
+          bash ./verify-page.sh
+
+      # ---- GATE 2: workflow-owned assertions --------------------------------
+      # Gate 1 alone is not a hard floor: verify-page.sh is a repo file, so a
+      # PR could weaken it (a human review is the only thing in the way). These
+      # assertions live in .github/workflows/, which the agent's PAT cannot
+      # write to because it has no `workflows` permission. This is the portion
+      # of the deploy gate that holds regardless of what lands in the repo.
+      # Every check below was validated against the real dist/ on 2026-08-07.
+      - name: Gate 2 — workflow-owned build assertions
+        run: |
+          set -euo pipefail
+          fail() { echo "::error::$1"; exit 1; }
+
+          [ -s dist/index.html ]   || fail "dist/index.html missing or empty"
+          [ -d dist/_astro ]       || fail "dist/_astro missing — build did not emit assets"
+          [ -d dist/portfolio ]    || fail "dist/portfolio missing"
+          [ -d dist/photos ]       || fail "dist/photos missing"
+
+          grep -q 'name="viewport"' dist/index.html \
+            || fail "no viewport meta in dist/index.html"
+
+          # astro.config.mjs sets base:'/linktree-site'. If that regresses, every
+          # asset URL silently 404s on the live site while the HTML still renders.
+          grep -q '/linktree-site/' dist/index.html \
+            || fail "base path /linktree-site/ not applied — check astro.config.mjs"
+
+          # Sanity floor on size; the live page is ~5.8 KB.
+          [ "$(wc -c < dist/index.html)" -ge 2000 ] \
+            || fail "dist/index.html suspiciously small"
+
+          echo "Gate 2 PASS"
+
+      # ---- PUBLISH ----------------------------------------------------------
+      # Reached only if both gates exited 0.
+      - name: Publish dist/ to gh-pages
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # No `set -x`: the remote URL carries the token. Actions also masks
+          # GITHUB_TOKEN in log output, but do not rely on that alone.
+          set -euo pipefail
+
+          REMOTE="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          WT="${RUNNER_TEMP}/gh-pages-publish"
+
+          git config --global user.name  "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Preserve gh-pages history rather than force-pushing an orphan branch:
+          # gh-pages already carries 10+ "Deploy ..." commits and a wiped history
+          # is not a reversible change.
+          if git fetch --no-tags --depth=1 "$REMOTE" gh-pages:refs/remotes/publish/gh-pages; then
+            git worktree add -B gh-pages "$WT" refs/remotes/publish/gh-pages
+          else
+            echo "gh-pages not found on the remote — creating it as an orphan branch."
+            git worktree add --detach "$WT"
+            git -C "$WT" checkout --orphan gh-pages
+            git -C "$WT" reset --hard
+          fi
+
+          # Mirror the build. --delete removes files dropped from the build so a
+          # renamed asset does not linger; --exclude .git protects the worktree
+          # pointer file.
+          rsync -a --delete --exclude '.git' dist/ "$WT"/
+
+          # REQUIRED. GitHub Pages' legacy (Jekyll) builder ignores paths whose
+          # name starts with an underscore, which would drop dist/_astro/ and
+          # break the portfolio page. Astro does not emit this file and it is not
+          # in public/, so it must be created here on every deploy.
+          touch "$WT/.nojekyll"
+
+          cd "$WT"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Built output is identical to the live branch — nothing to publish."
+            exit 0
+          fi
+          git commit -m "Deploy ${GITHUB_SHA}"
+          git push "$REMOTE" gh-pages
+          echo "Published ${GITHUB_SHA} to gh-pages."
