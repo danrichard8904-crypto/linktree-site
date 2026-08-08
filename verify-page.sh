@@ -115,7 +115,10 @@ fi
 # --- 4. PLACEHOLDER RATCHET (monotonic, never exact) -------------------------
 # Must fail on REGRESSION, never on PROGRESS. Wiring a placeholder is correct
 # work and must not turn the gate red.
-PLACEHOLDER_COUNT=$(grep -oa 'href="#"' "$INDEX" | wc -l | tr -d ' ')
+# `grep` exits 1 when it matches nothing. Under `set -e` + `pipefail` that aborts the
+# script silently at exactly the moment the count is 0 -- i.e. when every placeholder has
+# been correctly wired. `|| true` makes an empty match a legal result so 0 can be compared.
+PLACEHOLDER_COUNT=$( { grep -oa 'href="#"' "$INDEX" || true; } | wc -l | tr -d ' ')
 [ "$PLACEHOLDER_COUNT" -le "$MAX_PLACEHOLDERS" ] \
   || fail "placeholder links rose to $PLACEHOLDER_COUNT (ceiling $MAX_PLACEHOLDERS). Adding dead href=\"#\" links to satisfy a gate is a regression, not a fix."
 
