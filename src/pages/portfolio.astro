@@ -9,13 +9,24 @@ const VIDEO_EXT = new Set(['.mp4', '.webm']);
 const media = fs.readdirSync(PORTFOLIO_DIR)
   .filter(name => {
     const ext = path.extname(name).toLowerCase();
-    return IMAGE_EXT.has(ext) || VIDEO_EXT.has(ext);
+    return (IMAGE_EXT.has(ext) || VIDEO_EXT.has(ext)) && !name.endsWith('-poster.jpg');
   })
   .sort()
-  .map(name => ({
-    type: VIDEO_EXT.has(path.extname(name).toLowerCase()) ? 'video' : 'image',
-    src: `/linktree-site/photos/portfolio/${name}`,
-  }));
+  .map(name => {
+    const ext = path.extname(name).toLowerCase();
+    const isVideo = VIDEO_EXT.has(ext);
+    // Each clip carries a same-stem -poster.jpg (a 3:4 center crop of an early
+    // frame). It renders instantly so the board never shows empty tiles, and
+    // lets the video itself defer its whole file until it is allowed to play.
+    const poster = isVideo
+      ? `/linktree-site/photos/portfolio/${path.basename(name, ext)}-poster.jpg`
+      : undefined;
+    return {
+      type: isVideo ? 'video' : 'image',
+      src: `/linktree-site/photos/portfolio/${name}`,
+      poster,
+    };
+  });
 
 const TILE_W = 300;
 const TILE_H = 400;
@@ -86,7 +97,7 @@ const placed = media.map((item, i) => ({
         {placed.map(item => (
           <figure class="tile" data-src={item.src} style={`left:${item.x}px;top:${item.y}px`}>
             {item.type === 'video' ? (
-              <video class="media" src={item.src} muted loop playsinline preload="metadata"></video>
+              <video class="media" src={item.src} poster={item.poster} muted loop playsinline preload="none"></video>
             ) : (
               <img class="media" src={item.src} alt="" decoding="async" draggable="false" />
             )}
@@ -441,8 +452,8 @@ const placed = media.map((item, i) => ({
             const video = tile.querySelector('video');
             const shouldPlay = allowed && winners.has(tile);
             if (shouldPlay) {
-              // Only clips cleared to play pull the full file; the rest stay at
-              // metadata (one small range request) showing their first frame.
+              // The poster already shows the right frame, so clips cleared to
+              // play are the only ones that ever pull their file.
               if (video.preload !== 'auto') video.preload = 'auto';
               if (video.paused) {
                 const p = video.play();
