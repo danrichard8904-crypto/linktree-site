@@ -1,4 +1,7 @@
 ---
+// Base path comes from astro.config.mjs, which differs per host
+// (Cloudflare serves at root, github.io at /linktree-site).
+const base = import.meta.env.BASE_URL.replace(/\/+$/, '') + '/';
 ---
 <!doctype html>
 <html lang="en">
@@ -11,14 +14,14 @@
     <div class="layout">
       <main class="card">
         <div class="bg-photo" aria-hidden="true">
-          <img src="/linktree-site/photos/dan-outdoor.jpg" alt="" width="941" height="1672" fetchpriority="high" decoding="async">
+          <img src={`${base}photos/dan-outdoor.jpg`} alt="" width="941" height="1672" fetchpriority="high" decoding="async">
         </div>
         <div class="bg-scrim"></div>
         <div class="content">
           <h1 class="title anim" style="--d:0">My Work</h1>
 
           <div class="link-row anim" style="--d:1">
-            <a href="/linktree-site/portfolio" class="text-link">Hair Portfolio</a>
+            <a href={`${base}portfolio`} class="text-link">Hair Portfolio</a>
             <span class="text-link is-disabled" aria-disabled="true">Coming Soon</span>
           </div>
 

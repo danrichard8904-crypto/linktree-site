@@ -2,6 +2,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+// Base path comes from astro.config.mjs (root on Cloudflare, /linktree-site on github.io).
+const base = import.meta.env.BASE_URL.replace(/\/+$/, '') + '/';
+
 const PORTFOLIO_DIR = path.join(process.cwd(), 'public/photos/portfolio');
 const IMAGE_EXT = new Set(['.jpg', '.jpeg', '.png', '.webp']);
 const VIDEO_EXT = new Set(['.mp4', '.webm']);
@@ -19,11 +22,11 @@ const media = fs.readdirSync(PORTFOLIO_DIR)
     // frame). It renders instantly so the board never shows empty tiles, and
     // lets the video itself defer its whole file until it is allowed to play.
     const poster = isVideo
-      ? `/linktree-site/photos/portfolio/${path.basename(name, ext)}-poster.jpg`
+      ? `${base}photos/portfolio/${path.basename(name, ext)}-poster.jpg`
       : undefined;
     return {
       type: isVideo ? 'video' : 'image',
-      src: `/linktree-site/photos/portfolio/${name}`,
+      src: `${base}photos/portfolio/${name}`,
       poster,
     };
   });
@@ -87,7 +90,7 @@ const placed = media.map((item, i) => ({
   </head>
   <body>
     <header class="topbar">
-      <a href="/linktree-site/" class="back">← Back</a>
+      <a href={base} class="back">← Back</a>
       <div class="subtitle">Hair Portfolio</div>
       <a href="https://www.vagaro.com/mcgreevysbarbershop/services" target="_blank" rel="noopener" class="book-mini">Book</a>
     </header>
