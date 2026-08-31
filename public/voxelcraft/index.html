@@ -44,7 +44,19 @@
   #t-mine { right: 92px; bottom: 160px; }
   #t-fire { right: 20px; bottom: 88px; }
   #t-place { right: 92px; bottom: 88px; }
+  #t-inv { right: 164px; bottom: 88px; }
   #t-pause { left: 12px; top: 64px; width: 44px; height: 44px; font-size: 9px; border-radius: 8px; }
+  #inv { position: fixed; inset: 0; z-index: 12; background: rgba(9,9,11,.82);
+    display: none; flex-direction: column; align-items: center; justify-content: center; gap: 18px; }
+  #inv.open { display: flex; }
+  #inv h2 { font-size: 16px; letter-spacing: 4px; color: var(--dim); }
+  .inv-row { display: flex; gap: 8px; pointer-events: auto; }
+  .inv-btn { width: 52px; height: 52px; border: 2px solid #27272a; background: rgba(9,9,11,.7);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    color: var(--dim); font-size: 9px; cursor: pointer; }
+  .inv-btn:active { border-color: var(--acc); color: var(--fg); }
+  .inv-btn .sw { width: 24px; height: 24px; border: 1px solid rgba(255,255,255,.25); }
+  .inv-hint { font-size: 11px; color: var(--dim); }
   #test-panel { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); z-index: 20;
     background: #000; border: 2px solid var(--acc); color: var(--acc); font-size: 13px; line-height: 1.7;
     padding: 16px 22px; display: none; text-align: left; min-width: 340px; }
@@ -68,6 +80,7 @@
   <div class="tbtn" id="t-fire" data-action="fire">FIRE</div>
   <div class="tbtn" id="t-mine" data-action="mine">MINE</div>
   <div class="tbtn" id="t-place" data-action="place">PLACE</div>
+  <div class="tbtn" id="t-inv" data-action="inv">INV</div>
   <div class="tbtn" id="t-jump" data-action="jump">JUMP</div>
 </div>
 
@@ -75,8 +88,8 @@
   <h1>VOXEL<span>CRAFT</span></h1>
   <p id="key-help">
     WASD move · SPACE jump · MOUSE look<br>
-    L-CLICK shoot · R-CLICK place · MMB / hold-mine break<br>
-    1-6 blocks · G glow-block · F time speed · M mute · E pause
+    L-CLICK break · R-CLICK place · SCROLL / 1-5 switch block<br>
+    E inventory (creative swap) · G bow · F time speed · M mute
   </p>
   <p id="touch-help" class="hidden">
     left half — drag to move<br>
@@ -96,6 +109,13 @@
   <h1 style="color:#ef4444">YOU DIED</h1>
   <p id="dead-stats"></p>
   <button class="btn" id="respawn-btn">RESPAWN</button>
+</div>
+
+<div class="overlay hidden" id="inv">
+  <h2>CREATIVE — select a slot, tap a block to fill it</h2>
+  <div class="inv-row" id="inv-palette"></div>
+  <div class="inv-row" id="inv-slots"></div>
+  <p class="inv-hint">E or ESC to close</p>
 </div>
 
 <div id="test-panel"><h2>TEST RUN</h2><div id="test-lines"></div></div>
@@ -590,13 +610,13 @@ void main() {
 const FS_WORLD = `
 precision highp float;
 varying vec2 vUV; varying vec3 vMeta; varying vec3 vWorld;
-uniform sampler2D uAtlas; uniform float uTime; uniform float uNight;
+uniform sampler2D uAtlas; uniform float uTime; uniform float uDay;
 void main() {
   vec4 tex = texture2D(uAtlas, vUV);
   float ao = vMeta.x, shade = vMeta.y, emis = vMeta.z;
-  vec3 sunCol = mix(vec3(1.05, 0.95, 0.8), vec3(0.40, 0.48, 0.80), uNight);
+  vec3 sunCol = mix(vec3(1.0, 0.82, 0.62), vec3(1.08, 1.02, 0.95), uDay);
   float pulse = emis > 0.5 ? (1.25 + 0.5 * sin(uTime * 2.4)) : 1.0;
-  float light = shade * ao * mix(1.0, 0.30, uNight) * pulse;
+  float light = shade * ao * mix(0.32, 1.0, uDay) * pulse;
   vec3 col = tex.rgb * (sunCol * light + vec3(1.0, 0.85, 0.4) * emis * 0.9);
   gl_FragColor = vec4(col, tex.a);
 }`;
@@ -614,10 +634,10 @@ void main() {
 const FS_SOLID = `
 precision highp float;
 varying vec3 vColor; varying vec3 vWorld;
-uniform float uNight;
+uniform float uDay;
 void main() {
-  vec3 sunCol = mix(vec3(1.05, 0.95, 0.8), vec3(0.40, 0.48, 0.80), uNight);
-  float light = mix(0.95, 0.34, uNight);
+  vec3 sunCol = mix(vec3(1.0, 0.82, 0.62), vec3(1.08, 1.02, 0.95), uDay);
+  float light = mix(0.36, 0.95, uDay);
   gl_FragColor = vec4(vColor * sunCol * light, 1.0);
 }`;
 
@@ -629,7 +649,7 @@ void main() { gl_Position = vec4(aPos, 0.9999, 1.0); }`;
 const FS_SKY = `
 precision highp float;
 varying vec2 vScr;
-uniform vec3 uFwd, uRight, uUp, uCam;
+uniform vec3 uFwd, uRight, uUp, uSunDir, uMoonDir;
 uniform float uTanFov, uAspect, uNight, uTime;
 float hash12(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
 void main() {
@@ -637,9 +657,8 @@ void main() {
   float up = clamp(dir.y, -1.0, 1.0);
   vec3 col = mix(mix(vec3(0.75,0.85,0.95), vec3(0.33,0.60,0.95), pow(max(up,0.0),0.6)),
                  mix(vec3(0.07,0.09,0.20), vec3(0.02,0.03,0.10), pow(max(up,0.0),0.6)), uNight);
-  vec3 sunDir = normalize(vec3(0.4, 0.7, 0.3));
-  col += vec3(1.0,0.9,0.6) * pow(max(dot(dir,sunDir),0.0), 350.0) * 3.0 * (1.0-uNight);
-  col += vec3(0.9,0.95,1.0) * pow(max(dot(dir,-sunDir),0.0), 500.0) * 2.0 * uNight;
+  col += vec3(1.0,0.9,0.6) * pow(max(dot(dir,uSunDir),0.0), 350.0) * 3.0 * (1.0-uNight);
+  col += vec3(0.9,0.95,1.0) * pow(max(dot(dir,uMoonDir),0.0), 500.0) * 2.0 * uNight;
   if (uNight > 0.4 && dir.y > 0.0) {
     vec2 sp = floor(dir.xz / max(dir.y, 0.15) * 40.0);
     float star = step(0.994, hash12(sp)) * smoothstep(0.1, 0.4, dir.y) * (uNight-0.4)/0.6;
@@ -662,9 +681,12 @@ class Game {
     this.meshes = new Map();
     this.viewRadius = this.testMode ? 3 : 4;
     this.lastErr = null;
-    this.sel = 0; this.selGlow = false;
+    this.sel = 0;
+    this.inv = [1, 2, 3, 4, 6]; // 5 creative slots (default: grass dirt stone log plank)
+    this.palette = [1, 2, 3, 4, 5, 6, 7, 9]; // all assignable blocks (8 = bedrock excluded)
+    this.invOpen = false;
     this.dayTime = 0.35;
-    this.daySpeeds = [1 / 900, 1 / 240, 1 / 40];
+    this.daySpeeds = [1 / 600, 1 / 180, 1 / 40]; // 10min / 3min / 24s per day
     this.speedIdx = 1;
     this.health = 20; this.score = 0; this.kills = 0; this.dead = false;
     this.player = { pos: [0, 0, 0], vel: [0, 0, 0], yaw: 0, pitch: 0, onGround: false, spawn: [0, 0, 0] };
@@ -883,30 +905,32 @@ class Game {
   collide() {
     const p = this.player;
     const R = 0.3, H = 0.9;
-    const min = [p.pos[0] - R, p.pos[1], p.pos[2] - R];
-    const max = [p.pos[0] + R, p.pos[1] + H, p.pos[2] + R];
-    for (let x = Math.floor(min[0]); x <= Math.floor(max[0]); x++) {
-      for (let y = Math.floor(min[1]); y <= Math.floor(max[1]); y++) {
-        for (let z = Math.floor(min[2]); z <= Math.floor(max[2]); z++) {
+    for (let x = Math.floor(p.pos[0] - R); x <= Math.floor(p.pos[0] + R); x++) {
+      for (let y = Math.floor(p.pos[1]); y <= Math.floor(p.pos[1] + H); y++) {
+        for (let z = Math.floor(p.pos[2] - R); z <= Math.floor(p.pos[2] + R); z++) {
           if (!this.world.solid(x, y, z)) continue;
-          const ox = Math.min(max[0] - x, x + 1 - min[0]);
-          const oy = Math.min(max[1] - y, y + 1 - min[1]);
-          const oz = Math.min(max[2] - z, z + 1 - min[2]);
+          // 3D penetration of the player AABB vs the unit block [x,x+1]x[y,y+1]x[z,z+1].
+          // Require all three > 0 (real intersection) — the old code resolved X/Z on
+          // 1D overlap alone, so the ground block under the feet (Y only touches) shoved
+          // the player sideways every frame.
+          const ox = Math.min(p.pos[0] + R - x, x + 1 - (p.pos[0] - R));
+          const oy = Math.min(p.pos[1] + H - y, y + 1 - p.pos[1]);
+          const oz = Math.min(p.pos[2] + R - z, z + 1 - (p.pos[2] - R));
           if (ox <= 0 || oy <= 0 || oz <= 0) continue;
-          if (oy <= ox + 1e-4 && oy <= oz + 1e-4) {
-            // feet penetration vs head penetration decides land-on-top vs head-bump
-            if ((y + 1) - min[1] <= max[1] - y) { p.pos[1] = y + 1; if (p.vel[1] < 0) p.vel[1] = 0; p.onGround = true; }
-            else { p.pos[1] = y - H - 0.001; if (p.vel[1] > 0) p.vel[1] = 0; }
+          // push out along the axis of least penetration
+          if (oy <= ox && oy <= oz) {
+            if ((y + 1) - p.pos[1] <= p.pos[1] + H - y) {
+              p.pos[1] = y + 1; if (p.vel[1] < 0) p.vel[1] = 0; p.onGround = true;
+            } else {
+              p.pos[1] = y - H - 0.001; if (p.vel[1] > 0) p.vel[1] = 0;
+            }
           } else if (ox <= oz) {
-            p.pos[0] += (min[0] > x + 0.5) ? ox + 0.001 : -(ox + 0.001);
+            p.pos[0] += (p.pos[0] < x + 0.5) ? -(ox + 0.001) : (ox + 0.001);
             p.vel[0] = 0;
           } else {
-            p.pos[2] += (min[2] > z + 0.5) ? oz + 0.001 : -(oz + 0.001);
+            p.pos[2] += (p.pos[2] < z + 0.5) ? -(oz + 0.001) : (oz + 0.001);
             p.vel[2] = 0;
           }
-          min[0] = p.pos[0] - R; max[0] = p.pos[0] + R;
-          min[1] = p.pos[1]; max[1] = p.pos[1] + H;
-          min[2] = p.pos[2] - R; max[2] = p.pos[2] + R;
         }
       }
     }
@@ -922,19 +946,24 @@ class Game {
     if (this.keys['d'] || this.keys['arrowright']) ax += 1;
     if (this.touch.joy) { ax = this.touch.joy.dx; az = this.touch.joy.dy; }
     if (this.testMode) {
-      const t = this.testTicks * 0.016;
-      ax = Math.sin(t * 0.7); az = Math.cos(t * 0.5);
-      p.yaw += dt * 0.15; // slow pan so screenshots show landscape
-      p.pitch = Math.min(0.35, p.pitch + dt * 0.02); // slight downward tilt shows terrain + mobs
+      // no auto-walk: wandering drags the player into hills and buries the
+      // camera in solid rock (raycast face=null, place always fails).
+      // Ease the camera down to a resting pitch so the crosshair lands on the
+      // ground within reach (a flat view from eye height misses the ground
+      // block below, which is correct raycast behavior, not a bug).
+      p.yaw += dt * 0.15;
+      p.pitch = Math.min(0.3, p.pitch + (0.3 - p.pitch) * dt * 0.5);
     }
     const len = Math.hypot(ax, az);
     if (len > 0) { ax /= len; az /= len; }
+    // movement = -az * fwd + ax * right, where fwd = (-sin,-cos) [x,z], right = (cos,-sin)
     const sin = Math.sin(p.yaw), cos = Math.cos(p.yaw);
-    const wx = (ax * cos + az * sin);
-    const wz = (ax * sin - az * cos);
-    p.vel[0] += (wx * speed - p.vel[0]) * Math.min(1, dt * 10);
-    p.vel[2] += (wz * speed - p.vel[2]) * Math.min(1, dt * 10);
-    p.vel[1] -= 24 * dt;
+    const wx = (az * sin + ax * cos);
+    const wz = (az * cos - ax * sin);
+    const accel = len > 0 ? 12 : 14; // ground friction when no input
+    p.vel[0] += (wx * speed - p.vel[0]) * Math.min(1, dt * accel);
+    p.vel[2] += (wz * speed - p.vel[2]) * Math.min(1, dt * accel);
+    p.vel[1] -= 26 * dt;
     const jump = this.keys[' '] || this.touch.jump;
     if (jump && p.onGround) { p.vel[1] = 8.5; p.onGround = false; this.sfx('jump'); }
     p.onGround = false;
@@ -999,10 +1028,27 @@ class Game {
     if (x + 1 > p.pos[0] - 0.3 && x < p.pos[0] + 0.3 && y + 1 > p.pos[1] && y < p.pos[1] + 0.9 && z + 1 > p.pos[2] - 0.3 && z < p.pos[2] + 0.3) {
       this.sfx('deny'); return;
     }
-    const id = this.selGlow ? 7 : HOTBAR[this.sel];
+    const id = this.inv[this.sel];
+    if (!id) { this.sfx('deny'); return; }
     this.world.setBlock(x, y, z, id);
     this.sfx('place');
     if (this.testMode) this.testResults.lastPlaced = BLOCKS[id].name;
+  }
+
+  // creative swap: put block id in the selected slot (or any slot if given)
+  setSlot(id, slot = this.sel) {
+    if (!BLOCKS[id] || id === 8) return;
+    this.inv[slot] = id;
+    this.sfx('click');
+  }
+
+  setInv(open) {
+    if (this.invOpen === open) return;
+    this.invOpen = open;
+    if (open) document.exitPointerLock?.(); // need the cursor to pick blocks
+    else this.canvas.requestPointerLock?.();
+    if (this.opts.onInv) this.opts.onInv(open);
+    this.sfx('click');
   }
 
   // ---------- entities ----------
@@ -1166,6 +1212,10 @@ class Game {
     } else this.sfx('shoot');
   }
 
+  // sun travels east(+x)→south(+z)→west over the day; moon opposite
+  sunDir() { const a = (this.dayTime - 0.25) * Math.PI * 2; return [Math.cos(a), Math.sin(a) * 0.85, 0.45]; }
+  moonDir() { const a = (this.dayTime + 0.25) * Math.PI * 2; return [Math.cos(a), Math.sin(a) * 0.85, -0.45]; }
+
   nightFactor() {
     // 0 = full day, 1 = full night; linear transitions. dayTime 0..1
     const t = this.dayTime;
@@ -1212,12 +1262,20 @@ class Game {
     const view = M4.lookAt(eye, target, [0, 1, 0]);
     const vp = M4.mul(proj, view);
     const night = this.nightFactor();
+    const day = 1 - night;
+    const sun = this.sunDir(), moon = this.moonDir();
+    const sn = Math.hypot(sun[0], sun[1], sun[2]), mn = Math.hypot(moon[0], moon[1], moon[2]);
+    const sunN = [sun[0] / sn, sun[1] / sn, sun[2] / sn];
+    const moonN = [moon[0] / mn, moon[1] / mn, moon[2] / mn];
     const time = now / 1000;
 
     // sky
     gl.disable(gl.DEPTH_TEST);
     gl.depthMask(false);
     gl.useProgram(this.progSky.prog);
+    // world/solid passes leave higher attribute arrays enabled; clear them so the
+    // sky's single aPos draw can't read a freed chunk VBO (INVALID_OPERATION)
+    for (let i = 1; i < 4; i++) gl.disableVertexAttribArray(i);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.skyVBO);
     const aSky = this.progSky.a('aPos');
     gl.enableVertexAttribArray(aSky);
@@ -1229,6 +1287,8 @@ class Game {
     gl.uniform1f(this.progSky.u('uAspect'), W / H);
     gl.uniform1f(this.progSky.u('uNight'), night);
     gl.uniform1f(this.progSky.u('uTime'), time);
+    gl.uniform3fv(this.progSky.u('uSunDir'), sunN);
+    gl.uniform3fv(this.progSky.u('uMoonDir'), moonN);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     gl.enable(gl.DEPTH_TEST);
     gl.depthMask(true);
@@ -1237,7 +1297,7 @@ class Game {
     gl.useProgram(this.progWorld.prog);
     gl.uniformMatrix4fv(this.progWorld.u('uVP'), false, vp);
     gl.uniform1f(this.progWorld.u('uTime'), time);
-    gl.uniform1f(this.progWorld.u('uNight'), night);
+    gl.uniform1f(this.progWorld.u('uDay'), day);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.texAtlas);
     gl.uniform1i(this.progWorld.u('uAtlas'), 0);
@@ -1272,7 +1332,7 @@ class Game {
     // entities
     gl.useProgram(this.progSolid.prog);
     gl.uniformMatrix4fv(this.progSolid.u('uVP'), false, vp);
-    gl.uniform1f(this.progSolid.u('uNight'), night);
+    gl.uniform1f(this.progSolid.u('uDay'), day);
     const sPos = this.progSolid.a('aPos'), sCol = this.progSolid.a('aColor');
     for (const e of this.entities) {
       const geo = this._entGeo[e.type];
@@ -1313,25 +1373,33 @@ class Game {
     window.addEventListener('keydown', (e) => {
       const k = e.key.toLowerCase();
       this.keys[k] = true;
-      if (k >= '1' && k <= '6') { this.sel = parseInt(k) - 1; this.selGlow = false; this.sfx('click'); }
-      if (k === 'g') { this.selGlow = !this.selGlow; this.sfx('click'); }
+      if (k >= '1' && k <= '5') { this.sel = parseInt(k) - 1; this.sfx('click'); }
+      if (k === 'e' || k === 'i') { if (this.invOpen) this.setInv(false); else if (!this.paused) this.setInv(true); }
       if (k === 'r' && this.dead) this.respawn();
       if (k === 'm') { this.muted = !this.muted; }
-      if (k === 'e' || k === 'escape') this.togglePause();
+      if (k === 'escape') {
+        if (this.invOpen) this.setInv(false);
+        else this.togglePause();
+      }
       if (k === 'f') { this.speedIdx = (this.speedIdx + 1) % 3; }
       e.preventDefault();
     });
     window.addEventListener('keyup', (e) => { this.keys[e.key.toLowerCase()] = false; });
     c.addEventListener('mousedown', (e) => {
-      if (this.paused || this.dead) return;
-      if (e.button === 0) this.shootArrow();
+      if (this.paused || this.dead || this.invOpen) return;
+      if (e.button === 0 || e.button === 1) this.breakBlock();
       else if (e.button === 2) this.placeBlock();
-      else if (e.button === 1) this.breakBlock();
     });
     c.addEventListener('contextmenu', (e) => e.preventDefault());
     c.addEventListener('click', () => {
       if (!this.pointerLocked && !this.testMode) c.requestPointerLock?.();
     });
+    c.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const n = this.inv.length;
+      this.sel = (this.sel + (e.deltaY > 0 ? 1 : n - 1)) % n;
+      this.sfx('click');
+    }, { passive: false });
     document.addEventListener('mousemove', (e) => {
       if (this.pointerLocked) {
         this.player.yaw += e.movementX * 0.0022;
@@ -1380,6 +1448,7 @@ class Game {
       if (a === 'mine') this.breakBlock();
       if (a === 'place') this.placeBlock();
       if (a === 'fire') this.shootArrow();
+      if (a === 'inv') this.setInv(!this.invOpen);
       if (a === 'pause') this.togglePause();
     });
   }
@@ -1446,6 +1515,14 @@ class Game {
           this.testTicks++;
           if (this.testTicks % 90 === 0) this.breakBlock();
           if (this.testTicks % 130 === 0) this.placeBlock();
+          if (this.testTicks === 150) {
+            // inventory swap: fill slot 3 with glow, place it, restore
+            this.setSlot(7, 2);
+            this.sel = 2;
+            this.testResults.invSwapped = true;
+          }
+          if (this.testTicks === 60) this.testResults.sunA = JSON.stringify(this.sunDir().map(v => +v.toFixed(3)));
+          if (this.testTicks === 240) this.testResults.sunB = JSON.stringify(this.sunDir().map(v => +v.toFixed(3)));
           if (this.testTicks % 200 === 0) this.shootArrow();
           if (this.testTicks === 300) this.testResults.done = true;
         }
@@ -1520,13 +1597,16 @@ const CREEPER_PARTS = [
 
 const params = new URLSearchParams(location.search);
 const testMode = params.has('test');
+const probeMode = params.has('probe'); // real-input measurement mode: no synthetic test input
 const canvas = document.getElementById('c');
 const $ = (id) => document.getElementById(id);
 
 const game = new Game(canvas, {
   test: testMode,
+  probe: probeMode,
   onError: (msg) => { $('start-err').textContent = msg; },
   onPause: (p) => { $('paused').classList.toggle('hidden', !p); },
+  onInv: (open) => { $('inv').classList.toggle('open', open); },
   onFrame: (g) => { if (testMode) renderTest(g); },
 });
 window.__game = game; // diagnostics handle
@@ -1546,29 +1626,58 @@ if ('ontouchstart' in window || params.has('touch') || navigator.maxTouchPoints 
 $('paused').addEventListener('click', () => {
   if (document.body.classList.contains('touch') && game.paused) game.togglePause();
 });
+// touch: re-lock look after starting; inventory button (E) works via the key layer, so give it a tap target
+$('inv').addEventListener('click', (e) => {
+  if (e.target.id === 'inv') game.setInv(false); // tap backdrop to close
+});
 
-// hotbar
-const SWATCH = { 1: '#5fbf3f', 2: '#8a5a34', 3: '#8d8d92', 4: '#6b4a2b', 6: '#b08a4f', 9: '#e7d8a8', 7: '#ffd54a' };
+// hotbar (5 creative slots, mirrors game.inv)
+const SWATCH = { 1: '#5fbf3f', 2: '#8a5a34', 3: '#8d8d92', 4: '#6b4a2b', 5: '#3e8f2e', 6: '#b08a4f', 7: '#ffd54a', 9: '#e7d8a8' };
 function buildHotbar() {
   const hb = $('hotbar');
   hb.innerHTML = '';
-  HOTBAR.forEach((id, i) => {
+  game.inv.forEach((id, i) => {
     const d = document.createElement('div');
-    d.className = 'slot' + (i === 0 ? ' sel' : '');
+    d.className = 'slot' + (i === game.sel ? ' sel' : '');
     d.innerHTML = `<span class="n">${i + 1}</span><div class="sw" style="background:${SWATCH[id]}"></div>`;
-    d.addEventListener('click', () => { game.sel = i; game.selGlow = false; game.sfx('click'); buildHotbar(); });
+    d.addEventListener('click', () => { game.sel = i; game.sfx('click'); });
     hb.appendChild(d);
   });
 }
 buildHotbar();
 setInterval(() => {
-  const ids = HOTBAR.slice(); if (game.selGlow) ids[game.sel] = 7;
   const hb = $('hotbar');
   [...hb.children].forEach((el, i) => {
     el.classList.toggle('sel', i === game.sel);
-    el.querySelector('.sw').style.background = SWATCH[ids[i]];
+    el.querySelector('.sw').style.background = SWATCH[game.inv[i]] || '#000';
   });
-}, 200);
+}, 150);
+
+// creative inventory: pick a slot (1-5 or click), then tap a block to fill it
+function buildInv() {
+  const pal = $('inv-palette');
+  pal.innerHTML = '';
+  game.palette.forEach((id) => {
+    const b = document.createElement('div');
+    b.className = 'inv-btn';
+    b.innerHTML = `<div class="sw" style="background:${SWATCH[id]}"></div>${BLOCKS[id].name}`;
+    b.addEventListener('click', () => {
+      game.setSlot(id, game.sel); // fill the currently selected slot (1-5 / hotbar click to choose)
+      game.sfx('place');
+    });
+    pal.appendChild(b);
+  });
+  const slots = $('inv-slots');
+  slots.innerHTML = '';
+  game.inv.forEach((id, i) => {
+    const b = document.createElement('div');
+    b.className = 'inv-btn' + (i === game.sel ? ' sel' : '');
+    b.style.borderColor = i === game.sel ? 'var(--acc)' : '';
+    b.innerHTML = `<div class="sw" style="background:${SWATCH[id]}"></div>slot ${i + 1}`;
+    b.addEventListener('click', () => { game.sel = i; game.sfx('click'); buildInv(); });
+    slots.appendChild(b);
+  });
+}
 
 function timeLabel(t) {
   const h = Math.floor(t * 24), m = Math.floor((t * 24 % 1) * 60);
@@ -1634,6 +1743,8 @@ function renderTest(g) {
     ['player grounded (y sane)', g.player.pos[1] >= 3 && g.player.pos[1] < 60],
     ['block broken', r.lastBroke !== undefined],
     ['block placed', r.lastPlaced !== undefined],
+    ['inventory swap (creative)', r.invSwapped === true],
+    ['sun moves with clock', r.sunA && r.sunB && r.sunA !== r.sunB],
     ['shot fired', g.testTicks > 200],
     ['day/night clock', g.testTicks >= 60],
     ['fps > 15', g.fps > 15 || g.testTicks < 120],
