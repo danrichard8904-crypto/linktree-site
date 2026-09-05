@@ -8,7 +8,8 @@
 #   This script verifies the LOCAL build only. `dist/` is gitignored
 #   (.gitignore line 3) and is NEVER the deployed artifact. A PASS here means
 #   "the thing I just built is not obviously broken". It does NOT mean the live
-#   site changed. The deploy Definition of Done is verify-live.sh.
+#   site changed. The deploy DoD is the publish script's per-leg verdict
+#   (qwen-publish-laneA.sh), which grades each origin's build separately.
 #
 # NEVER edit this file to make it pass. If the gate is red, the tree is wrong,
 # not the gate. (Self-check: `./verify-page.sh --sha` prints this file's
@@ -47,6 +48,7 @@
 #   MAX_PLACEHOLDERS   default 1     max allowed `href="#"` in dist/index.html
 #   REQUIRED_LABELS    default 'Instagram|TikTok|Hair Portfolio'   pipe-delimited
 #   MIN_INDEX_BYTES    default 1000
+#   TARGET             default inferred from CF_PAGES   'cloudflare' or 'github'
 #
 # EXIT CODES: 0 = pass. 1 = a content/build assertion failed. Any other code
 # comes from bash itself and must be treated as a FAILURE, never as a pass.
@@ -134,6 +136,53 @@ for label in "${_LABELS[@]}"; do
 done
 [ -z "$MISSING_LABELS" ] || fail "required labels missing from $INDEX: ${MISSING_LABELS%; }"
 
+# --- 5b. TARGET-AWARE BASE PATH (all pages, not just index) ------------------
+# Cloudflare Pages builds must emit root-relative paths (/photos/x.jpg).
+# GitHub Pages builds must emit /linktree-site/-prefixed paths (/linktree-site/photos/x.jpg).
+# Publishing to the wrong origin with the wrong base path is silent breakage: the HTML
+# returns 200 but every asset 404s. Every dist/*.html is checked, not just the index,
+# so one page with a hand-rolled path cannot hide behind a correct index.
+
+# Determine the intended target from TARGET env var or CF_PAGES.
+if [ -z "${TARGET:-}" ]; then
+  if [ -n "${CF_PAGES:-}" ]; then
+    TARGET="cloudflare"
+    TARGET_INFER="CF_PAGES is set in environment"
+  else
+    TARGET="github"
+    TARGET_INFER="CF_PAGES not set (default to github.io)"
+  fi
+else
+  TARGET_INFER="TARGET env var explicitly set"
+fi
+
+# Every absolute local path the build emitted (href="/" or src="/" values),
+# minus the two legal forms: the site prefix itself and the bare root "/".
+UNPREFIXED=$(grep -rhoaE '(href|src)="/[^"]*"' --include='*.html' dist \
+  | sed -E 's/^(href|src)="//; s/"$//' \
+  | grep -vE '^/($|linktree-site/)' || true)
+
+case "$TARGET" in
+  cloudflare)
+    if grep -qroaE '(href|src)="/linktree-site/' --include='*.html' dist; then
+      fail "target=$TARGET but a dist HTML file emits paths starting with /linktree-site/ — rebuild with CF_PAGES=1: CF_PAGES=1 npm run build"
+    fi
+    EMITTED_BASE="/"
+    ;;
+  github)
+    if ! grep -qroaE '(href|src)="/linktree-site/' --include='*.html' dist; then
+      fail "target=$TARGET but no dist HTML file emits paths starting with /linktree-site/ — rebuild without CF_PAGES: npm run build"
+    fi
+    if [ -n "$UNPREFIXED" ]; then
+      fail "target=$TARGET but dist HTML emits unprefixed absolute paths: $(printf '%s' "$UNPREFIXED" | sort -u | tr '\n' ' ')"
+    fi
+    EMITTED_BASE="/linktree-site/"
+    ;;
+  *)
+    fail "TARGET=$TARGET is invalid (must be 'cloudflare' or 'github')"
+    ;;
+esac
+
 # --- 6. PASS -----------------------------------------------------------------
 # Print the measured numbers. A gate that prints only "PASS" cannot be audited
 # after the fact, and cannot be distinguished from a gate that skipped its body.
@@ -141,6 +190,7 @@ echo "PASS: verify-page.sh"
 echo "  index=$INDEX ${INDEX_BYTES}B  portfolio=$PORTFOLIO ${PORTFOLIO_BYTES}B"
 echo "  placeholders=$PLACEHOLDER_COUNT/${MAX_PLACEHOLDERS}  labels_ok=${REQUIRED_LABELS}"
 echo "  index_sha256=$(sha256sum "$INDEX" | cut -c1-16)"
+echo "  target=$TARGET base=$EMITTED_BASE ($TARGET_INFER)"
 echo "  NOTE: this graded a LOCAL build. The live site has NOT been verified."
-echo "        Deploy DoD = ./verify-live.sh <canary> <base-gh-pages-sha> <base-live-sha256>"
+echo "        Deploy DoD = the publish script's per-leg verdict (qwen-publish-laneA.sh)."
 exit 0
