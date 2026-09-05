@@ -1,32 +1,556 @@
 ---
+// Base path comes from astro.config.mjs (root on Cloudflare, /linktree-site on github.io).
 const base = import.meta.env.BASE_URL.replace(/\/+$/, '') + '/';
+
+// The card set — one entry per card. Swapping a placeholder image for the real
+// one is a same-filename drop into public/photos/ai-projects/.
+const projects = [
+  { name: 'VOXELCRAFT',       soon: true,  img: 'voxelcraft.jpg', line: 'A voxel game, built by AI. Playable now.', btn: 'Play',          href: `${base}voxelcraft/` },
+  { name: 'GOVWATCH',         soon: true,  img: 'govwatch.jpg',   line: 'Coming soon.',                           btn: 'coming soon', href: null },
+  { name: 'TO BE DETERMINED', soon: false, img: 'tbd-1.jpg',      line: 'Coming soon.',                           btn: null,          href: null },
+  { name: 'TO BE DETERMINED', soon: false, img: 'tbd-2.jpg',      line: 'Coming soon.',                           btn: null,          href: null },
+  { name: 'TO BE DETERMINED', soon: false, img: 'tbd-3.jpg',      line: 'Coming soon.',                           btn: null,          href: null },
+  { name: 'TO BE DETERMINED', soon: false, img: 'tbd-4.jpg',      line: 'Coming soon.',                           btn: null,          href: null },
+];
+// Script tag bodies are raw text in Astro — no interpolation. set:html is
+// processed, so the JSON is serialized here and injected as a string.
+const dataJson = JSON.stringify({ base, projects });
 ---
 <!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
     <title>AI Projects — Reppstory</title>
   </head>
   <body>
-    <a href={`${base}`} class="back">back</a>
+    <header class="topbar anim" style="--d:0">
+      <a href={base} class="back">← Back</a>
+      <div class="subtitle">AI Projects</div>
+      <span class="spacer" aria-hidden="true"></span>
+    </header>
+
+    <main class="stage anim" id="stage" style="--d:1" aria-label="AI projects carousel">
+      <article class="card" data-i="0"></article>
+      <article class="card" data-i="1"></article>
+      <article class="card" data-i="2"></article>
+      <article class="card" data-i="3"></article>
+      <article class="card" data-i="4"></article>
+      <article class="card" data-i="5"></article>
+    </main>
+
+    <div class="dots anim" id="dots" style="--d:2" role="tablist" aria-label="Projects">
+      <button class="dot" type="button" aria-label="Project 1"></button>
+      <button class="dot" type="button" aria-label="Project 2"></button>
+      <button class="dot" type="button" aria-label="Project 3"></button>
+      <button class="dot" type="button" aria-label="Project 4"></button>
+      <button class="dot" type="button" aria-label="Project 5"></button>
+      <button class="dot" type="button" aria-label="Project 6"></button>
+    </div>
+
+    <div class="detail" id="detail" hidden>
+      <button class="close" id="closeBtn" type="button" aria-label="Close">×</button>
+      <div class="detail-inner" id="detailInner">
+        <div class="detail-img" id="detailImg"></div>
+        <span class="badge" id="detailBadge" hidden>coming soon</span>
+        <h2 class="detail-name" id="detailName"></h2>
+        <p class="detail-line" id="detailLine"></p>
+        <a class="detail-btn" id="detailBtn" hidden></a>
+      </div>
+    </div>
+
+    <script type="application/json" id="aiData" set:html={dataJson}></script>
+
+    <script>
+      const DATA = JSON.parse(document.getElementById('aiData').textContent);
+      const { base, projects } = DATA;
+      const N = projects.length;
+
+      const stage = document.getElementById('stage');
+      const detail = document.getElementById('detail');
+      const detailImg = document.getElementById('detailImg');
+      const detailBadge = document.getElementById('detailBadge');
+      const detailName = document.getElementById('detailName');
+      const detailLine = document.getElementById('detailLine');
+      const detailBtn = document.getElementById('detailBtn');
+      const closeBtn = document.getElementById('closeBtn');
+      const dots = Array.from(document.querySelectorAll('.dot'));
+
+      const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+      const fine = window.matchMedia('(pointer: fine)').matches;
+      const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      // --- Build cards from the data array (DOM stays in sync with the set) ---
+      const cards = [];
+      for (let i = 0; i < N; i++) {
+        const p0 = projects[i];
+        const el = stage.querySelector(`.card[data-i="${i}"]`);
+        const src = `${base}photos/ai-projects/${p0.img}`;
+        const badge = p0.soon ? '<span class="badge">coming soon</span>' : '';
+        el.innerHTML = `<div class="card-img">${badge}<img src="${src}" alt="${p0.name}" decoding="async" draggable="false"></div><div class="card-name">${p0.name}</div>`;
+        cards.push(el);
+      }
+
+      // --- Layout -----------------------------------------------------------
+      let cardW = 0, step = 0;
+      function measure() {
+        cardW = cards[0].offsetWidth;
+        // Neighbours overlap like a fanned deck: the first peeks from the edge,
+        // the second is a sliver. 0.62 tuned against the osmo reference.
+        step = cardW * 0.62;
+      }
+
+      // --- State: one position scalar drives every card ----------------------
+      // p (float, card-index units) — every transform/opacity is a pure
+      // function of d = i - p. Spring settles to the nearest integer, which is
+      // what enforces exactly one card per swipe.
+      let p = 0, v = 0, target = null;
+      let e = 1, evx = 0, eTarget = null, detailIdx = -1, flipRect = null, expanded = false;
+      const tilt = { x: 0, y: 0 }, tiltT = { x: 0, y: 0 };
+      let raf = null, lastT = 0;
+
+      // Critically damped: no overshoot past the target card.
+      const K = 170, C = 2 * Math.sqrt(K);
+      const stepSpring = (x, vx, t, dt) => {
+        const a = K * (t - x) - C * vx;
+        vx += a * dt;
+        x += vx * dt;
+        if (Math.abs(t - x) < 0.0005 && Math.abs(vx) < 0.005) return [t, 0, true];
+        return [x, vx, false];
+      };
+
+      function render() {
+        for (let i = 0; i < N; i++) {
+          const d = i - p, ad = Math.abs(d);
+          const el = cards[i];
+          if (ad > 2.6) { el.style.visibility = 'hidden'; continue; }
+          el.style.visibility = 'visible';
+          let ry = d * -14, rx = 0, tz = -ad * 120, sc = 1 - ad * 0.08;
+          if (ad < 0.5) { ry += tilt.y; rx = tilt.x; }   // hover tilt, front card only
+          el.style.transform = `translate3d(${d * step}px,0,${tz}px) rotateY(${ry}deg) rotateX(${rx}deg) scale(${sc})`;
+          el.style.opacity = (1 - ad * 0.45).toFixed(3);
+          el.style.zIndex = String(100 - Math.round(ad * 10));
+        }
+        const front = Math.round(p);
+        dots.forEach((dt, i) => {
+          dt.classList.toggle('on', i === front);
+          dt.setAttribute('aria-selected', i === front ? 'true' : 'false');
+        });
+      }
+
+      function renderDetail() {
+        if (detailIdx < 0) return;
+        const vw = window.innerWidth, vh = window.innerHeight;
+        const r = flipRect;
+        const x = r.left * (1 - e), y = r.top * (1 - e);
+        const s = (r.width / vw) * (1 - e) + e;
+        const sY = (r.height / vh) * (1 - e) + e;
+        detail.style.transform = `translate3d(${x}px,${y}px,0) scale(${s},${sY})`;
+        detail.style.borderRadius = `${16 * (1 - e)}px`;
+        detailInner.style.opacity = clamp((e - 0.45) * 2.2, 0, 1).toFixed(3);
+      }
+      const detailInner = document.getElementById('detailInner');
+
+      function tick(now) {
+        const dt = Math.min((now - lastT) / 1000, 0.032);
+        lastT = now;
+
+        if (target !== null) {
+          [p, v] = stepSpring(p, v, target, dt);
+          if (Math.abs(target - p) < 0.0005 && Math.abs(v) < 0.005) { p = target; v = 0; target = null; }
+        }
+        if (expanded && eTarget !== null) {
+          [e, evx] = stepSpring(e, evx, eTarget, dt);
+          if (Math.abs(eTarget - e) < 0.0005 && Math.abs(evx) < 0.005) {
+            e = eTarget; evx = 0; eTarget = null;
+            if (e === 0) {
+              detail.hidden = true;
+              detail.style.transform = '';
+              document.body.classList.remove('locked');
+              expanded = false; detailIdx = -1;
+              tiltT.x = tiltT.y = 0;
+            }
+          }
+          renderDetail();
+        }
+        const k = Math.min(1, dt * 12);
+        tilt.x += (tiltT.x - tilt.x) * k;
+        tilt.y += (tiltT.y - tilt.y) * k;
+
+        render();
+
+        const active = target !== null || dragging
+          || (expanded && eTarget !== null)
+          || Math.abs(tiltT.x - tilt.x) > 0.02 || Math.abs(tiltT.y - tilt.y) > 0.02;
+        if (active) { raf = requestAnimationFrame(tick); }
+        else { raf = null; lastT = 0; }
+      }
+      function kick() {
+        if (REDUCED) {
+          if (target !== null) { p = target; v = 0; target = null; }
+          if (expanded && eTarget !== null) {
+            e = eTarget; eTarget = null;
+            if (e === 0) {
+              detail.hidden = true; detail.style.transform = '';
+              document.body.classList.remove('locked');
+              expanded = false; detailIdx = -1;
+            }
+          }
+          render();
+          if (detailIdx >= 0) renderDetail();
+          return;
+        }
+        if (raf === null) { lastT = performance.now(); raf = requestAnimationFrame(tick); }
+      }
+
+      // --- Drag / swipe -------------------------------------------------------
+      let dragging = false, moved = false, startX = 0, startP = 0, lastX = 0, lastTm = 0, vEst = 0;
+
+      stage.addEventListener('pointerdown', (ev) => {
+        if (expanded) return;
+        dragging = true; moved = false;
+        startX = lastX = ev.clientX; startP = p; lastTm = ev.timeStamp; vEst = 0;
+        target = null;
+        tiltT.x = tiltT.y = 0;
+        stage.setPointerCapture(ev.pointerId);
+        kick();
+      });
+
+      stage.addEventListener('pointermove', (ev) => {
+        if (!dragging) { if (fine) updateTilt(ev); return; }
+        if (expanded) return;
+        const dx = ev.clientX - startX;
+        if (Math.abs(dx) > 8) moved = true;
+        const dtm = (ev.timeStamp - lastTm) / 1000;
+        if (dtm > 0.001) {
+          vEst = 0.8 * vEst + 0.2 * ((ev.clientX - lastX) / dtm) / step;
+          lastTm = ev.timeStamp; lastX = ev.clientX;
+        }
+        p = clamp(startP - dx / step, -0.4, N - 1 + 0.4);
+        kick();
+      });
+
+      function updateTilt(ev) {
+        if (!fine || expanded) return;
+        const r = stage.getBoundingClientRect();
+        const nx = (ev.clientX - r.left) / r.width - 0.5;
+        const ny = (ev.clientY - r.top) / r.height - 0.5;
+        tiltT.x = -ny * 6;
+        tiltT.y = nx * 9;
+      }
+
+      function endDrag(ev) {
+        if (!dragging) return;
+        dragging = false;
+        if (moved) {
+          // Velocity bias capped under half a card: one flick = exactly one card.
+          const bias = clamp(vEst * 0.12, -0.45, 0.45);
+          target = clamp(Math.round(p + bias), 0, N - 1);
+          kick();
+        } else {
+          // Tap on a card: front card expands, a neighbour glides one step
+          // toward front. Taps on empty background do nothing.
+          const front = Math.round(p);
+          const el = ev.target.closest('.card');
+          if (!el) return;
+          const ci = Number(el.dataset.i);
+          if (ci === front) expand(ci);
+          else { target = clamp(front + (ci > front ? 1 : -1), 0, N - 1); kick(); }
+        }
+      }
+      stage.addEventListener('pointerup', endDrag);
+      stage.addEventListener('pointercancel', endDrag);
+      stage.addEventListener('dragstart', (ev) => ev.preventDefault());
+
+      // --- Wheel / keys / dots --------------------------------------------------
+      let wheelLock = 0;
+      stage.addEventListener('wheel', (ev) => {
+        ev.preventDefault();
+        if (expanded) return;
+        const now = performance.now();
+        if (now - wheelLock < 280) return;
+        const d = Math.abs(ev.deltaY) > Math.abs(ev.deltaX) ? ev.deltaY : ev.deltaX;
+        if (Math.abs(d) < 12) return;
+        wheelLock = now;
+        target = clamp(Math.round(p) + (d > 0 ? 1 : -1), 0, N - 1);
+        kick();
+      }, { passive: false });
+
+      window.addEventListener('keydown', (ev) => {
+        if (expanded) { if (ev.key === 'Escape') closeDetail(); return; }
+        if (ev.key === 'ArrowRight') { target = clamp(Math.round(p) + 1, 0, N - 1); kick(); }
+        if (ev.key === 'ArrowLeft') { target = clamp(Math.round(p) - 1, 0, N - 1); kick(); }
+      });
+
+      dots.forEach((dt, i) => dt.addEventListener('click', () => {
+        if (!expanded && i !== Math.round(p)) { target = i; kick(); }
+      }));
+
+      // --- Expand to full-screen (same scalar discipline: e in [0,1]) ----------
+      function fillDetail(i) {
+        const pr = projects[i];
+        detailImg.innerHTML = `<img src="${base}photos/ai-projects/${pr.img}" alt="${pr.name}" draggable="false">`;
+        detailBadge.hidden = !pr.soon;
+        detailName.textContent = pr.name;
+        detailLine.textContent = pr.line;
+        if (pr.btn) {
+          detailBtn.hidden = false;
+          detailBtn.textContent = pr.btn;
+          if (pr.href) { detailBtn.href = pr.href; detailBtn.removeAttribute('aria-disabled'); }
+          else { detailBtn.removeAttribute('href'); detailBtn.setAttribute('aria-disabled', 'true'); }
+        } else {
+          detailBtn.hidden = true;
+          detailBtn.removeAttribute('href');
+        }
+      }
+
+      function expand(i) {
+        p = Math.round(p); v = 0; target = null; render();
+        detailIdx = i;
+        fillDetail(i);
+        flipRect = cards[i].getBoundingClientRect();
+        detail.hidden = false;
+        document.body.classList.add('locked');
+        expanded = true;
+        e = 0; eTarget = 1;
+        kick();
+      }
+      function closeDetail() { if (expanded && eTarget === null) { eTarget = 0; kick(); } }
+
+      closeBtn.addEventListener('click', closeDetail);
+      detail.addEventListener('click', (ev) => {
+        if (ev.target === detail || ev.target === detailImg || ev.target.tagName === 'IMG') closeDetail();
+      });
+
+      // --- Init -----------------------------------------------------------------
+      window.addEventListener('resize', () => { measure(); render(); });
+      measure();
+      render();
+    </script>
   </body>
 </html>
-<style>
-  :global(body) {
+
+<style is:global>
+  /* is:global — the card DOM is built at runtime from the data array, so it
+     carries no Astro scope attribute; scoped selectors would never match it. */
+  html, body {
     margin: 0;
-    min-height: 100vh;
-    background: #000;
+    height: 100%;
+    overflow: hidden;
+    background: #141413;
     font-family: Inter, -apple-system, 'Segoe UI', sans-serif;
+    overscroll-behavior: none;
   }
-  .back {
+
+  .topbar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: calc(14px + env(safe-area-inset-top, 0px)) calc(18px + env(safe-area-inset-right, 0px)) 14px calc(18px + env(safe-area-inset-left, 0px));
+    background: linear-gradient(180deg, rgba(20,20,19,0.95) 0%, rgba(20,20,19,0.75) 62%, rgba(20,20,19,0) 100%);
+    pointer-events: none;
+  }
+  .topbar a, .topbar button { pointer-events: auto; }
+  .back { font-size: 13px; color: #a09d96; text-decoration: none; }
+  .back:hover { color: #faf9f5; }
+  .subtitle {
+    font-size: 11px;
+    color: #a09d96;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+  }
+  .spacer { width: 40px; }
+
+  @media (pointer: coarse) {
+    .back { font-size: 15px; padding: 8px 4px; }
+  }
+
+  .stage {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    perspective: 1200px;
+    background: radial-gradient(ellipse at 50% 40%, #201f1c 0%, #141413 72%);
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    overflow: hidden;
+  }
+
+  .card {
     position: absolute;
-    top: 24px;
-    left: 24px;
+    width: min(300px, 68vw);
+    background: #1f1e1b;
+    border: 1px solid rgba(250,249,245,0.09);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 20px 44px rgba(0,0,0,0.5);
+    will-change: transform;
+    transform-style: preserve-3d;
+  }
+  .card-img {
+    position: relative;
+    aspect-ratio: 3 / 4;
+    background: #171614;
+  }
+  .card-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    pointer-events: none;
+    -webkit-user-drag: none;
+    -webkit-touch-callout: none;
+  }
+  .card-name {
+    padding: 14px 16px 16px;
+    font-size: 11px;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
     color: #faf9f5;
-    font-size: 14px;
-    text-decoration: underline;
-    text-decoration-thickness: 1px;
-    text-underline-offset: 6px;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .badge {
+    position: absolute;
+    top: 12px; left: 12px;
+    font-size: 9px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: #e8a55a;
+    border: 1px solid rgba(232,165,90,0.55);
+    border-radius: 9999px;
+    padding: 4px 10px;
+    background: rgba(20,20,19,0.6);
+  }
+
+  .dots {
+    position: fixed;
+    bottom: calc(26px + env(safe-area-inset-bottom, 0px));
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+    z-index: 10;
+  }
+  .dot {
+    width: 8px; height: 8px;
+    border-radius: 9999px;
+    border: none;
+    padding: 0;
+    background: rgba(250,249,245,0.25);
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.2s ease;
+  }
+  .dot.on { background: #e8a55a; transform: scale(1.25); }
+
+  .detail {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    background: #1f1e1b;
+    transform-origin: 0 0;
+    will-change: transform;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .detail[hidden] { display: none; }
+  .detail-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    width: min(340px, 78vw);
+  }
+  .detail-img {
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #171614;
+  }
+  .detail-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    pointer-events: none;
+  }
+  .detail .badge { position: static; }
+  .detail-name {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    color: #faf9f5;
+    margin: 0;
+    text-align: center;
+  }
+  .detail-line {
+    font-size: 13px;
+    color: #a09d96;
+    margin: 0;
+    text-align: center;
+  }
+  .detail-btn {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #e8a55a;
+    text-decoration: none;
+    border: 1px solid rgba(232,165,90,0.55);
+    border-radius: 9999px;
+    padding: 9px 22px;
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+  .detail-btn[aria-disabled='true'] {
+    color: #a09d96;
+    border-color: rgba(160,157,150,0.4);
+    pointer-events: none;
+  }
+  .detail-btn:hover { border-color: #e8a55a; background: rgba(232,165,90,0.12); }
+  .close {
+    position: absolute;
+    top: calc(16px + env(safe-area-inset-top, 0px));
+    right: 18px;
+    width: 40px; height: 40px;
+    border-radius: 9999px;
+    border: 1px solid rgba(250,249,245,0.14);
+    background: rgba(20,20,19,0.6);
+    color: #faf9f5;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .close:hover { background: rgba(250,249,245,0.1); }
+
+  body.locked { overflow: hidden; }
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .anim {
+    opacity: 0;
+    animation: rise 0.5s ease forwards;
+    animation-delay: calc(var(--d) * 100ms);
+  }
+  /* The .anim class sits on .dots, which also has a static translateX(-50%) —
+     the animation's end frame must keep the centering or the dots jump left. */
+  .dots.anim {
+    animation-name: rise-dots;
+  }
+  @keyframes rise-dots {
+    from { opacity: 0; transform: translateX(-50%) translateY(18px); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
   }
 </style>
