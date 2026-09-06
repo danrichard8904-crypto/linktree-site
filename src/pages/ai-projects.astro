@@ -49,13 +49,17 @@ const dataJson = JSON.stringify({ base, projects });
     </div>
 
     <div class="detail" id="detail" hidden>
-      <button class="close" id="closeBtn" type="button" aria-label="Close">×</button>
-      <div class="detail-inner" id="detailInner">
-        <div class="detail-img" id="detailImg"></div>
-        <span class="badge" id="detailBadge" hidden>coming soon</span>
-        <h2 class="detail-name" id="detailName"></h2>
-        <p class="detail-line" id="detailLine"></p>
-        <a class="detail-btn" id="detailBtn" hidden></a>
+      <div class="detail-panel">
+        <button class="close" id="closeBtn" type="button" aria-label="Close">×</button>
+        <div class="detail-inner">
+          <div class="detail-img" id="detailImg"></div>
+          <div class="detail-text">
+            <span class="badge" id="detailBadge" hidden>coming soon</span>
+            <h2 class="detail-name" id="detailName"></h2>
+            <p class="detail-line" id="detailLine"></p>
+            <a class="detail-btn" id="detailBtn" hidden></a>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -109,13 +113,16 @@ const dataJson = JSON.stringify({ base, projects });
       const tilt = { x: 0, y: 0 }, tiltT = { x: 0, y: 0 };
       let raf = null, lastT = 0;
 
-      // Critically damped: no overshoot past the target card.
-      const K = 170, C = 2 * Math.sqrt(K);
+      // Under-damped (zeta 0.88): arrives fast with a barely-visible settle.
+      // K=170 critical damped measured ~0.8s to settle one card — too slow to
+      // feel fluent. K=350/z0.88 settles in ~0.35s (the 0.002/0.02 epsilon is
+      // sub-pixel: 0.2% of the 181px step).
+      const K = 350, C = 2 * 0.88 * Math.sqrt(K);
       const stepSpring = (x, vx, t, dt) => {
         const a = K * (t - x) - C * vx;
         vx += a * dt;
         x += vx * dt;
-        if (Math.abs(t - x) < 0.0005 && Math.abs(vx) < 0.005) return [t, 0, true];
+        if (Math.abs(t - x) < 0.002 && Math.abs(vx) < 0.02) return [t, 0, true];
         return [x, vx, false];
       };
 
@@ -138,6 +145,14 @@ const dataJson = JSON.stringify({ base, projects });
         });
       }
 
+      // Shared-element expand: the PANEL flips card-rect -> viewport, the IMAGE
+      // flips card-image-rect -> detail-image-rect (both 3:4, so its scale is
+      // near-uniform — no visible stretch), and the text fades up in the second
+      // half. The old single-overlay FLIP scaled the whole overlay, which
+      // stretched the inner image non-uniformly (s != sy) — the "not fluent" look.
+      const detailPanel = document.querySelector('.detail-panel');
+      const detailText = document.querySelector('.detail-text');
+      let imgFlip = null; // {x0, y0, sx0, sy0} = card-image offset/scale at e=0
       function renderDetail() {
         if (detailIdx < 0) return;
         const vw = window.innerWidth, vh = window.innerHeight;
@@ -145,11 +160,13 @@ const dataJson = JSON.stringify({ base, projects });
         const x = r.left * (1 - e), y = r.top * (1 - e);
         const s = (r.width / vw) * (1 - e) + e;
         const sY = (r.height / vh) * (1 - e) + e;
-        detail.style.transform = `translate3d(${x}px,${y}px,0) scale(${s},${sY})`;
-        detail.style.borderRadius = `${16 * (1 - e)}px`;
-        detailInner.style.opacity = clamp((e - 0.45) * 2.2, 0, 1).toFixed(3);
+        detailPanel.style.transform = `translate3d(${x}px,${y}px,0) scale(${s},${sY})`;
+        detailPanel.style.borderRadius = `${16 * (1 - e)}px`;
+        const g = 1 - e;
+        detailImg.style.transform = `translate3d(${imgFlip.x0 * g}px,${imgFlip.y0 * g}px,0) scale(${imgFlip.sx0 * g + (1 - g)},${imgFlip.sy0 * g + (1 - g)})`;
+        detailText.style.opacity = clamp((e - 0.4) * 2.5, 0, 1).toFixed(3);
+        detailText.style.transform = `translateY(${14 * g}px)`;
       }
-      const detailInner = document.getElementById('detailInner');
 
       function tick(now) {
         const dt = Math.min((now - lastT) / 1000, 0.032);
@@ -157,15 +174,17 @@ const dataJson = JSON.stringify({ base, projects });
 
         if (target !== null) {
           [p, v] = stepSpring(p, v, target, dt);
-          if (Math.abs(target - p) < 0.0005 && Math.abs(v) < 0.005) { p = target; v = 0; target = null; }
+          if (Math.abs(target - p) < 0.002 && Math.abs(v) < 0.02) { p = target; v = 0; target = null; }
         }
         if (expanded && eTarget !== null) {
           [e, evx] = stepSpring(e, evx, eTarget, dt);
-          if (Math.abs(eTarget - e) < 0.0005 && Math.abs(evx) < 0.005) {
+          if (Math.abs(eTarget - e) < 0.002 && Math.abs(evx) < 0.02) {
             e = eTarget; evx = 0; eTarget = null;
             if (e === 0) {
               detail.hidden = true;
-              detail.style.transform = '';
+              detailPanel.style.transform = '';
+              detailImg.style.transform = '';
+              detailText.style.transform = '';
               document.body.classList.remove('locked');
               expanded = false; detailIdx = -1;
               tiltT.x = tiltT.y = 0;
@@ -191,7 +210,8 @@ const dataJson = JSON.stringify({ base, projects });
           if (expanded && eTarget !== null) {
             e = eTarget; eTarget = null;
             if (e === 0) {
-              detail.hidden = true; detail.style.transform = '';
+              detail.hidden = true; detailPanel.style.transform = '';
+              detailImg.style.transform = ''; detailText.style.transform = '';
               document.body.classList.remove('locked');
               expanded = false; detailIdx = -1;
             }
@@ -204,12 +224,35 @@ const dataJson = JSON.stringify({ base, projects });
       }
 
       // --- Drag / swipe -------------------------------------------------------
-      let dragging = false, moved = false, startX = 0, startP = 0, lastX = 0, lastTm = 0, vEst = 0;
+      // Release velocity comes from the last ~100ms of samples, not the last
+      // event: a finger that decelerates into the release would read near-zero
+      // in a last-sample EMA and kill the flick — the main reason swipes felt
+      // like they "needed effort" or snapped back.
+      let dragging = false, moved = false, startX = 0, startP = 0;
+      let samples = []; // [timeStamp, clientX]
+
+      function softClamp(x) {
+        // Rubber-band at the ends: hard clamping stops the drag dead at the
+        // first/last card; resistance makes the edge feel physical.
+        if (x < 0) return x * 0.35;
+        if (x > N - 1) return (N - 1) + (x - (N - 1)) * 0.35;
+        return x;
+      }
+
+      function releaseVelocity() {
+        if (samples.length < 2) return 0;
+        const [t0, x0] = samples[0];
+        const [t1, x1] = samples[samples.length - 1];
+        const dt = (t1 - t0) / 1000;
+        if (dt < 0.016) return 0;
+        return (x1 - x0) / dt / step; // cards per second
+      }
 
       stage.addEventListener('pointerdown', (ev) => {
         if (expanded) return;
         dragging = true; moved = false;
-        startX = lastX = ev.clientX; startP = p; lastTm = ev.timeStamp; vEst = 0;
+        startX = ev.clientX; startP = p;
+        samples = [[ev.timeStamp, ev.clientX]];
         target = null;
         tiltT.x = tiltT.y = 0;
         stage.setPointerCapture(ev.pointerId);
@@ -221,12 +264,9 @@ const dataJson = JSON.stringify({ base, projects });
         if (expanded) return;
         const dx = ev.clientX - startX;
         if (Math.abs(dx) > 8) moved = true;
-        const dtm = (ev.timeStamp - lastTm) / 1000;
-        if (dtm > 0.001) {
-          vEst = 0.8 * vEst + 0.2 * ((ev.clientX - lastX) / dtm) / step;
-          lastTm = ev.timeStamp; lastX = ev.clientX;
-        }
-        p = clamp(startP - dx / step, -0.4, N - 1 + 0.4);
+        samples.push([ev.timeStamp, ev.clientX]);
+        while (samples.length > 2 && ev.timeStamp - samples[0][0] > 100) samples.shift();
+        p = softClamp(startP - dx / step);
         kick();
       });
 
@@ -242,9 +282,13 @@ const dataJson = JSON.stringify({ base, projects });
       function endDrag(ev) {
         if (!dragging) return;
         dragging = false;
+        samples = [];
         if (moved) {
-          // Velocity bias capped under half a card: one flick = exactly one card.
-          const bias = clamp(vEst * 0.12, -0.45, 0.45);
+          // Momentum: project the release velocity a short distance and snap to
+          // the nearest card. A half-card drag + a medium flick now lands on the
+          // next card; a slow release still snaps back when under the midpoint.
+          // Cap keeps one flick = exactly one card.
+          const bias = clamp(releaseVelocity() * 0.3, -0.5, 0.5);
           target = clamp(Math.round(p + bias), 0, N - 1);
           kick();
         } else {
@@ -270,7 +314,7 @@ const dataJson = JSON.stringify({ base, projects });
         const now = performance.now();
         if (now - wheelLock < 280) return;
         const d = Math.abs(ev.deltaY) > Math.abs(ev.deltaX) ? ev.deltaY : ev.deltaX;
-        if (Math.abs(d) < 12) return;
+        if (Math.abs(d) < 4) return;
         wheelLock = now;
         target = clamp(Math.round(p) + (d > 0 ? 1 : -1), 0, N - 1);
         kick();
@@ -305,11 +349,19 @@ const dataJson = JSON.stringify({ base, projects });
       }
 
       function expand(i) {
-        p = Math.round(p); v = 0; target = null; render();
+        p = Math.round(p); v = 0; target = null;
+        tiltT.x = tiltT.y = 0;
+        render();
         detailIdx = i;
         fillDetail(i);
         flipRect = cards[i].getBoundingClientRect();
         detail.hidden = false;
+        const a = cards[i].querySelector('.card-img').getBoundingClientRect();
+        const b = detailImg.getBoundingClientRect();
+        imgFlip = {
+          x0: a.left - b.left, y0: a.top - b.top,
+          sx0: a.width / b.width, sy0: a.height / b.height,
+        };
         document.body.classList.add('locked');
         expanded = true;
         e = 0; eTarget = 1;
@@ -323,6 +375,15 @@ const dataJson = JSON.stringify({ base, projects });
       });
 
       // --- Init -----------------------------------------------------------------
+      if (new URLSearchParams(location.search).has('debug')) {
+        // Inert without ?debug= — used by the headless CDP test to read the
+        // position/expand scalars and time settle durations.
+        window.__aiDebug = {
+          get p() { return p; }, get target() { return target; },
+          get e() { return e; }, get eTarget() { return eTarget; },
+          get step() { return step; },
+        };
+      }
       window.addEventListener('resize', () => { measure(); render(); });
       measure();
       render();
@@ -455,20 +516,30 @@ const dataJson = JSON.stringify({ base, projects });
     position: fixed;
     inset: 0;
     z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .detail[hidden] { display: none; }
+  .detail-panel {
+    position: fixed;
+    inset: 0;
     background: #1f1e1b;
     transform-origin: 0 0;
     will-change: transform;
     display: flex;
     align-items: center;
     justify-content: center;
+    pointer-events: none;
   }
-  .detail[hidden] { display: none; }
+  .detail-panel .close { pointer-events: auto; }
   .detail-inner {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 14px;
     width: min(340px, 78vw);
+    pointer-events: none;
   }
   .detail-img {
     width: 100%;
@@ -476,6 +547,7 @@ const dataJson = JSON.stringify({ base, projects });
     border-radius: 12px;
     overflow: hidden;
     background: #171614;
+    will-change: transform;
   }
   .detail-img img {
     width: 100%;
@@ -484,6 +556,7 @@ const dataJson = JSON.stringify({ base, projects });
     display: block;
     pointer-events: none;
   }
+  .detail-text { display: flex; flex-direction: column; align-items: center; gap: 14px; }
   .detail .badge { position: static; }
   .detail-name {
     font-size: 18px;
@@ -517,6 +590,7 @@ const dataJson = JSON.stringify({ base, projects });
     border-color: rgba(160,157,150,0.4);
     pointer-events: none;
   }
+  .detail-btn { pointer-events: auto; }
   .detail-btn:hover { border-color: #e8a55a; background: rgba(232,165,90,0.12); }
   .close {
     position: absolute;
