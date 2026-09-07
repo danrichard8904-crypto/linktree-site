@@ -162,6 +162,36 @@ function fbm2(x, y, seed, octaves = 4) {
   return sum / norm;
 }
 
+// 3D value noise + fbm — same deterministic style as the 2D pair above.
+function hash3i(x, y, z, seed) {
+  let h = Math.imul(x | 0, 0x27d4eb2d) ^ Math.imul(y | 0, 0x165667b1) ^ Math.imul(z | 0, 0x9e3779b9) ^ Math.imul(seed | 0, 0x85ebca6b);
+  h = Math.imul(h ^ (h >>> 15), 0x2c1b3c6d);
+  h = Math.imul(h ^ (h >>> 12), 0x297a15ad);
+  return ((h ^ (h >>> 13)) >>> 0) / 4294967296;
+}
+
+function valueNoise3(x, y, z, seed) {
+  const xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z);
+  const u = smooth(x - xi), v = smooth(y - yi), w = smooth(z - zi);
+  const c000 = hash3i(xi, yi, zi, seed), c100 = hash3i(xi + 1, yi, zi, seed);
+  const c010 = hash3i(xi, yi + 1, zi, seed), c110 = hash3i(xi + 1, yi + 1, zi, seed);
+  const c001 = hash3i(xi, yi, zi + 1, seed), c101 = hash3i(xi + 1, yi, zi + 1, seed);
+  const c011 = hash3i(xi, yi + 1, zi + 1, seed), c111 = hash3i(xi + 1, yi + 1, zi + 1, seed);
+  const x00 = c000 + (c100 - c000) * u, x10 = c010 + (c110 - c010) * u;
+  const x01 = c001 + (c101 - c001) * u, x11 = c011 + (c111 - c011) * u;
+  const y0 = x00 + (x10 - x00) * v, y1 = x01 + (x11 - x01) * v;
+  return y0 + (y1 - y0) * w;
+}
+
+function fbm3(x, y, z, seed, octaves = 3) {
+  let sum = 0, amp = 1, freq = 1, norm = 0;
+  for (let i = 0; i < octaves; i++) {
+    sum += valueNoise3(x * freq, y * freq, z * freq, seed + i * 101) * amp;
+    norm += amp; amp *= 0.5; freq *= 2;
+  }
+  return sum / norm;
+}
+
 // ===== src/gl.js =====
 // src/gl.js — column-major mat4/vec math + WebGL helper. Only what voxelcraft uses.
 // ponytail: no gl-matrix dependency (offline build), hand-rolled ops, same layout.
@@ -258,6 +288,7 @@ const T = {
   GRASS_TOP: 0, GRASS_SIDE: 1, DIRT: 2, STONE: 3,
   LOG_SIDE: 4, LOG_TOP: 5, LEAVES: 6, PLANK: 7,
   GLOW: 8, BEDROCK: 9, SAND: 10, WATER: 11,
+  COAL_ORE: 12, IRON_ORE: 13, COPPER_ORE: 14, GOLD_ORE: 15, DIAMOND_ORE: 16,
 };
 
 const BLOCKS = {
@@ -270,6 +301,11 @@ const BLOCKS = {
   7: { name: 'glow',   tiles: [T.GLOW, T.GLOW, T.GLOW, T.GLOW, T.GLOW, T.GLOW], glow: true },
   8: { name: 'bedrock',tiles: [T.BEDROCK, T.BEDROCK, T.BEDROCK, T.BEDROCK, T.BEDROCK, T.BEDROCK], unbreakable: true },
   9: { name: 'sand',   tiles: [T.SAND, T.SAND, T.SAND, T.SAND, T.SAND, T.SAND] },
+  10: { name: 'coal_ore',   tiles: [T.COAL_ORE, T.COAL_ORE, T.COAL_ORE, T.COAL_ORE, T.COAL_ORE, T.COAL_ORE] },
+  11: { name: 'iron_ore',   tiles: [T.IRON_ORE, T.IRON_ORE, T.IRON_ORE, T.IRON_ORE, T.IRON_ORE, T.IRON_ORE] },
+  12: { name: 'copper_ore', tiles: [T.COPPER_ORE, T.COPPER_ORE, T.COPPER_ORE, T.COPPER_ORE, T.COPPER_ORE, T.COPPER_ORE] },
+  13: { name: 'gold_ore',   tiles: [T.GOLD_ORE, T.GOLD_ORE, T.GOLD_ORE, T.GOLD_ORE, T.GOLD_ORE, T.GOLD_ORE] },
+  14: { name: 'diamond_ore',tiles: [T.DIAMOND_ORE, T.DIAMOND_ORE, T.DIAMOND_ORE, T.DIAMOND_ORE, T.DIAMOND_ORE, T.DIAMOND_ORE] },
 };
 
 const HOTBAR = [1, 2, 3, 4, 6, 9]; // grass dirt stone log plank sand (glow 7 via 'G' key)
@@ -354,6 +390,23 @@ const painters = {
     ctx.globalAlpha = 1;
   },
 };
+// --- Minecraft-style ores: stone base + 3-5 dark/light fleck clusters ---
+function orePainter(fleck) {
+  return (ctx, ox, oy, rand) => {
+    painters[T.STONE](ctx, ox, oy, rand);
+    for (let c = 0; c < 3 + (rand() * 3) | 0; c++) {
+      const cx = 1 + (rand() * 13) | 0, cy = 1 + (rand() * 13) | 0;
+      ctx.fillStyle = fleck;
+      ctx.fillRect(ox + cx, oy + cy, 2 + (rand() * 2) | 0, 2);
+      if (rand() < 0.5) px(ctx, ox + cx + 1, oy + cy - 1, fleck);
+    }
+  };
+}
+painters[T.COAL_ORE] = orePainter('#141414');
+painters[T.IRON_ORE] = orePainter('#d8af93');
+painters[T.COPPER_ORE] = orePainter('#c46e3c');
+painters[T.GOLD_ORE] = orePainter('#fcee4b');
+painters[T.DIAMOND_ORE] = orePainter('#53ecee');
 
 function buildAtlas() {
   const canvas = document.createElement('canvas');
@@ -381,6 +434,52 @@ const CH = 16;        // chunk size (x,z)
 const HMAX = 48;      // world height
 const WATER_Y = 13;   // water surface level
 const SEED = 1337;
+
+// --- Minecraft 1.18+ ore distribution (scaled to our 48-block height) ---
+// Each ore: block id, noise seed, noise frequency, and a height-probability
+// curve p(y) = "fraction of stone cells at height y that should be this ore".
+// Vein rule: ore where the stretched fbm3 (see ORE_LO/ORE_HI below) exceeds
+// 1 - p(y) → continuous clustered veins, same shape as vanilla's noise-
+// threshold generation. Array order = check order: RAREST first (Minecraft's
+// rule) so common coal can't claim a cell before diamond is even evaluated.
+const tri = (y, peak, width) => Math.max(0, 1 - Math.abs(y - peak) / width);
+const ORES = [
+  { id: 14, seed: SEED + 404, freq: 0.12, p: y => (y < 12 ? 0.14 * (1 - y / 14) : 0) },              // diamond: deep only (y<12)
+  { id: 13, seed: SEED + 403, freq: 0.12, p: y => 0.08 * tri(y, 10, 10) + 0.05 * tri(y, 3, 4) },     // gold: shallow
+  { id: 11, seed: SEED + 401, freq: 0.12, p: y => 0.18 * tri(y, 20, 16) + 0.06 * tri(y, 6, 8) },     // iron: mid band + shallow
+  { id: 12, seed: SEED + 402, freq: 0.12, p: y => 0.22 * tri(y, 24, 14) },                           // copper: mid band
+  { id: 10, seed: SEED + 400, freq: 0.12, p: y => 0.06 + 0.10 * (1 - y / 48) },                      // coal: everywhere, more at top
+];
+
+// 3D-noise cave carving (Minecraft-style): two scales — winding tunnels + larger chambers.
+const CAVE_T = 0.69;   // tunnel threshold
+const CAVE_C = 0.73;   // chamber threshold (lower-freq noise)
+function isCave(x, y, z) {
+  if (y < 2) return false;
+  return fbm3(x * 0.06, y * 0.10, z * 0.06, SEED + 300, 3) > CAVE_T
+      || fbm3(x * 0.022, y * 0.035, z * 0.022, SEED + 301, 2) > CAVE_C;
+}
+
+// fbm3 (2 octaves) is a tight bell around 0.5, not a uniform [0,1]: measured
+// 2–98% range on the ore coordinate grid is ≈ [0.23, 0.78]. Stretch into [0,1]
+// so p(y) in ORES above reads as a true "fraction of stone cells" probability.
+// Calibrated 2026-09-06 (/tmp/vc_stretch.mjs). Caves (isCave) intentionally
+// use the raw distribution — do not stretch there.
+const ORE_LO = 0.23, ORE_HI = 0.78;
+
+// Minecraft-style ore veins: first ore in ORES order (rarest-first) whose
+// stretched noise passes wins the cell. Deterministic — same (x,y,z) always
+// yields the same ore across chunks/reloads.
+function oreAt(x, y, z) {
+  for (const o of ORES) {
+    const p = o.p(y);
+    if (p <= 0) continue;
+    const thr = 1 - Math.min(0.97, Math.max(0.05, p));
+    const v = (fbm3(x * o.freq, y * o.freq, z * o.freq, o.seed, 2) - ORE_LO) / (ORE_HI - ORE_LO);
+    if (v > thr) return o.id;
+  }
+  return 0;
+}
 
 // height map + biome, analytic (no chunk storage needed for these)
 function heightAt(x, z) {
@@ -437,7 +536,12 @@ class World {
         for (let y = 0; y <= Math.max(h, WATER_Y); y++) {
           let id = 0;
           if (y === 0) id = 8;
-          else if (y <= h) id = (y === h) ? surf : (y >= h - 3 ? 2 : 3);
+          else if (y <= h) {
+            if (y === h) id = surf;
+            else if (y >= h - 3) id = 2;
+            else if (isCave(x, y, z)) id = 0; // cave carving → air
+            else id = oreAt(x, y, z) || 3;    // stone or ore vein
+          }
           data[World.idx(lx, y, lz)] = id;
         }
         const th = treeAt(x, z);
@@ -495,9 +599,212 @@ class World {
   }
 }
 
+// ===== src/light.js =====
+// src/light.js — Minecraft-style dual-channel light engine (skylight + block light).
+//
+// Model (matches modern MC, verified against multiple references 2026-09-06):
+//   - Two channels, 0..15 per cell: sky (sun) and block (glowstone/lanterns).
+//   - Sky sources: every air cell with an open column (no solid above it).
+//   - Block sources: every emissive block (glowstone) emits 15.
+//   - Propagation: BFS; level L at a transmitting cell spreads to a non-opaque
+//     neighbor as L-1; opaque blocks stop light (they store 0, never forward).
+//
+// Chunking (Minecraft's boundary model): light is computed per chunk over a
+// 16x48x16 core plus a 15-cell margin. Exact, not approximate — light travels
+// at most 15 steps, so any source reaching a core cell is inside the volume,
+// and every shortest path from it to the core stays inside the volume. Seeding
+// the whole volume and running the BFS there is bit-identical to a full-space
+// BFS for the core.
+//
+// Storage: world.light[cx,cz] = { sky: Uint8Array, block: Uint8Array } (16*16*48).
+// Uncomputed chunks read as 0 (dark); the mesher always ensures its chunk +
+// neighbor ring is lit before sampling (game.js buildMeshFor).
+//
+// Performance: per-chunk recompute reads the 3x3 raw chunk arrays directly
+// (no string-keyed block() lookups in the hot path) and overlays player edits
+// for the core only. Target < 2ms/chunk (benchmarked in /tmp/vc_lightbench.mjs).
+
+
+const R = 15;                 // max light travel (MC constant)
+const E = CH + 2 * R;         // 46: core + margin edge length (x/z)
+const VW = E + 2;             // 48: padded volume (1-cell border ring, all-zero)
+const VH = HMAX;              // 48
+// Padded volume: index math for all 6 neighbors is always safe (no edge wrap);
+// the border ring holds 0 and the BFS only reads/writes the inner [1..E] box.
+const VIDX = (lx, y, lz) => (y * VW + (lz + 1)) * VW + (lx + 1);
+const NX = [1, -1, 0, 0, 0, 0];
+const NY = [0, 0, 1, -1, 0, 0];
+const NZ = [0, 0, 0, 0, 1, -1];
+
+class LightEngine {
+  constructor(world) {
+    this.world = world;
+    world.light = new Map(); // "cx,cz" -> { sky, block }
+    this.dirty = new Set();  // chunk keys needing recompute
+  }
+
+  // An edit's light changes spread at most 15 blocks — inside the 3x3 chunk
+  // region around the edited chunk (15 < 16). Marking it dirty covers every
+  // cell whose value can change. (ponytail: the 16-17 block corner case at the
+  // far edge self-heals the next time the player crosses into that chunk.)
+  markDirty(cx, cz) {
+    for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) {
+      this.dirty.add((cx + dx) + ',' + (cz + dz));
+    }
+  }
+
+  clearChunk(cx, cz) { this.world.light.delete(cx + ',' + cz); }
+
+  ensure(cx, cz) {
+    const k = cx + ',' + cz;
+    let L = this.world.light.get(k);
+    if (!L) {
+      // First access: allocate and compute. (A fresh chunk is not in `dirty`;
+      // without this it would hand back an all-zero map and the mesher would
+      // render the whole world pitch-black.)
+      L = { sky: new Uint8Array(CH * CH * HMAX), block: new Uint8Array(CH * CH * HMAX) };
+      this.world.light.set(k, L);
+      this._recompute(cx, cz, L);
+      return L;
+    }
+    if (this.dirty.has(k)) { this.dirty.delete(k); this._recompute(cx, cz, L); }
+    return L;
+  }
+
+  // Per-vertex lookup for the mesher. Ensures the chunk containing the cell
+  // is computed (idempotent — cached after the first call), then reads it.
+  // Returns [sky, block] in 0..15.
+  lightAt(x, y, z) {
+    if (y < 0 || y >= HMAX) return [0, 0];
+    const cx = Math.floor(x / CH), cz = Math.floor(z / CH);
+    const L = this.ensure(cx, cz);
+    const i = (y * CH + ((z % CH) + CH) % CH) * CH + ((x % CH) + CH) % CH;
+    return [L.sky[i], L.block[i]];
+  }
+
+  _recompute(cx, cz, out) {
+    const w = this.world;
+
+    // --- local volume: raw 3x3 chunk data + core edit overlay ---
+    const vol = new Uint8Array(VW * VW * VH); // 0 = air (also the border ring)
+    const x0 = cx * CH - R, z0 = cz * CH - R; // world x/z of volume lx=0 (pre-pad)
+    for (let dcz = -1; dcz <= 1; dcz++) {
+      for (let dcx = -1; dcx <= 1; dcx++) {
+        const c = w.chunks.get((cx + dcx) + ',' + (cz + dcz));
+        if (!c) continue; // ungenerated = air
+        const bx = (cx + dcx) * CH, bz = (cz + dcz) * CH;
+        for (let y = 0; y < HMAX; y++) {
+          const row = y * CH * CH;
+          for (let lz = 0; lz < CH; lz++) {
+            const vz = bz + lz - z0;           // volume z (0..45)
+            if (vz < 0 || vz >= E) continue;
+            const vzi = vz + 1;                // padded
+            for (let lx = 0; lx < CH; lx++) {
+              const vx = bx + lx - x0;         // volume x (0..45)
+              if (vx < 0 || vx >= E) continue;
+              vol[(y * VW + vzi) * VW + (vx + 1)] = c[row + lz * CH + lx];
+            }
+          }
+        }
+      }
+    }
+    // Core edit overlay (player placements/removals); string lookups only for
+    // the 16x48x16 core, not the 17k-cell margin. Core occupies volume [R, R+16).
+    const edits = w.edits;
+    if (edits.size) {
+      for (const [key, id] of edits) {
+        const p = key.split(',');
+        const x = +p[0], y = +p[1], z = +p[2];
+        if (y < 0 || y >= HMAX) continue;
+        const vx = x - x0, vz = z - z0;
+        if (vx < R || vx >= R + CH || vz < R || vz >= R + CH) continue; // core only
+        vol[(y * VW + vz + 1) * VW + (vx + 1)] = id;
+      }
+    }
+
+    // --- sky seeds: per column, everything above the topmost solid is 15 ---
+    const sky = new Uint8Array(VW * VW * VH);
+    for (let vz = 0; vz < E; vz++) {
+      for (let vx = 0; vx < E; vx++) {
+        const xi = vx + 1, zi = vz + 1;
+        let top = -1;
+        for (let y = HMAX - 1; y >= 0; y--) if (vol[(y * VW + zi) * VW + xi]) { top = y; break; }
+        if (top < 0) top = -1;
+        for (let y = top + 1; y < HMAX; y++) sky[(y * VW + zi) * VW + xi] = 15;
+      }
+    }
+
+    // --- block seeds: emitters (glowstone) in the volume ---
+    const blk = new Uint8Array(VW * VW * VH);
+    for (let y = 0; y < HMAX; y++) {
+      for (let zi = 1; zi <= E; zi++) {
+        for (let xi = 1; xi <= E; xi++) {
+          const id = vol[(y * VW + zi) * VW + xi];
+          if (id && BLOCKS[id] && BLOCKS[id].glow) blk[(y * VW + zi) * VW + xi] = 15;
+        }
+      }
+    }
+
+    this._flood(sky, vol);
+    this._flood(blk, vol);
+
+    // --- copy the 16x48x16 core back out ---
+    const core = (src) => {
+      const dst = new Uint8Array(CH * CH * HMAX);
+      for (let y = 0; y < HMAX; y++) {
+        for (let vz = 0; vz < CH; vz++) {
+          for (let vx = 0; vx < CH; vx++) {
+            dst[(y * CH + vz) * CH + vx] = src[(y * VW + vz + 1 + R) * VW + (vx + 1 + R)];
+          }
+        }
+      }
+      return dst;
+    };
+    out.sky.set(core(sky));
+    out.block.set(core(blk));
+  }
+
+  // BFS flood fill. `vol` is the padded block volume (opaque = non-zero, air = 0).
+  // Lazy seed: only cells that can still improve a neighbor are enqueued — the
+  // open sky is a flat 15 plateau, so only its frontier does any work.
+  // The padded border ring holds level 0 and is treated as opaque (vol==0 is
+  // air *inside* the volume; the ring is excluded by bounds), so light never
+  // leaks out of the 46-wide box.
+  _flood(arr, vol) {
+    const q = new Int32Array(VW * VW * VH);
+    let qh = 0, qt = 0;
+    for (let i = 0; i < arr.length; i++) {
+      const v = arr[i];
+      if (v === 0) continue;
+      if (v < 15 || this._hasImproveable(arr, i)) q[qt++] = i;
+    }
+    while (qh < qt) {
+      const i = q[qh++];
+      const best = arr[i] - 1;
+      if (best <= 0) continue;
+      const xi = i % VW, rem = (i / VW) | 0, zi = rem % VW;
+      if (xi <= 0 || xi >= VW - 1 || zi <= 0 || zi >= VW - 1) continue; // interior only
+      // +x
+      let j = i + 1; if (!vol[j] && arr[j] < best) { arr[j] = best; q[qt++] = j; }
+      j = i - 1;     if (!vol[j] && arr[j] < best) { arr[j] = best; q[qt++] = j; }
+      j = i + VW;    if (!vol[j] && arr[j] < best) { arr[j] = best; q[qt++] = j; }
+      j = i - VW;    if (!vol[j] && arr[j] < best) { arr[j] = best; q[qt++] = j; }
+      j = i + VW*VW; if (!vol[j] && arr[j] < best) { arr[j] = best; q[qt++] = j; }
+      j = i - VW*VW; if (!vol[j] && arr[j] < best) { arr[j] = best; q[qt++] = j; }
+    }
+  }
+
+  _hasImproveable(arr, i) {
+    for (let n = 0; n < 6; n++) {
+      if (arr[i + (NX[n] + NY[n] * VW + NZ[n] * VW * VW)] < 15) return true;
+    }
+    return false;
+  }
+}
+
 // ===== src/mesher.js =====
-// src/mesher.js — per-chunk meshing: face culling, per-face shading, vertex AO, glow flag.
-// Vertex layout (8 floats): pos(3) uv(2) meta(3: ao, shade, emissive)
+// src/mesher.js — per-chunk meshing: face culling, per-face shading, vertex AO, per-vertex light.
+// Vertex layout (10 floats): pos(3) uv(2) meta(3: ao, shade, emissive) light(2: sky, block 0..1)
 
 
 // faces: normal + 4 corners (CCW from outside). tangent axes = the two non-normal axes.
@@ -514,7 +821,8 @@ const FACES = [
 const UVS_SIDE = [[0, 1], [1, 1], [1, 0], [0, 0]];
 const UVS_FLAT = [[0, 0], [1, 0], [1, 1], [0, 1]];
 
-function buildChunkMesh(world, cx, cz) {
+// light: (x, y, z) -> [sky, block] 0..15 (LightEngine.lightAt); called per vertex.
+function buildChunkMesh(world, cx, cz, light) {
   world.getChunk(cx, cz); // ensure generated (edit overlay read via world.block below)
   const x0 = cx * CH, z0 = cz * CH;
 
@@ -543,19 +851,22 @@ function buildChunkMesh(world, cx, cz) {
             pos.push(x + cor[0], y + cor[1], z + cor[2]);
             const [uu, vv] = uvs[c];
             uv.push(u0 + (u1 - u0) * uu, v0 + (v1 - v0) * vv);
-            meta.push(aoFor(world, x, y, z, face, cor), face.shade, def.glow ? 1 : 0);
+            meta.push(aoFor(world, x, y, z, face, cor), face.shade, def.glow ? 1 : 0, ...vertexLight(world, light, x, y, z, cor, def.glow));
           }
           idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
         }
       }
-      // water surface at WATER_Y when column is below it (CCW from above)
+      // water surface at WATER_Y when column is below it (CCW from above).
+      // Light: sample the cell the water sits in; water has no block light.
        if (world.block(x, WATER_Y, z) === 0 && heightAtCol(world, x, z) < WATER_Y) {
          const base = wpos.length / 3;
          const w = WATER_Y;
          const [u0, v0, u1, v1] = tileUV(T.WATER);
+         const [ls, lb] = light ? light(x, w, z) : [15, 0];
+         const wm = [1, 0.8, 0, ls / 15, lb / 15];
          wpos.push(x, w, z, x, w, z + 1, x + 1, w, z + 1, x + 1, w, z);
          wuv.push(u0, v0, u0, v1, u1, v1, u1, v0);
-         wmeta.push(1, 0.8, 0, 1, 0.8, 0, 1, 0.8, 0, 1, 0.8, 0);
+         for (let c = 0; c < 4; c++) for (const q of wm) wmeta.push(q); // 4 verts x 5
          widx.push(base, base + 1, base + 2, base, base + 2, base + 3);
        }
     }
@@ -571,6 +882,15 @@ function buildChunkMesh(world, cx, cz) {
 
 function heightAtCol(world, x, z) {
   return heightAt(x, z); // analytic terrain height (water check only, edits irrelevant)
+}
+
+// per-vertex light sample: the cell the vertex sits in (light is stored per cell;
+// sampling the adjacent cell gives the MC-style gradient across a face).
+// Emissive blocks clamp block light to full so their faces always read as sources.
+function vertexLight(world, light, x, y, z, cor, isGlow) {
+  const [s, b] = light ? light(x + cor[0], y + cor[1], z + cor[2]) : [15, 0];
+  const bb = isGlow ? Math.max(b, 15) : b;
+  return [s / 15, bb / 15];
 }
 
 // classic voxel AO: 3 neighbors around each corner
@@ -599,25 +919,30 @@ function aoFor(world, x, y, z, face, cor) {
 
 // GLSL ES 1.00 — accepted by both WebGL1 and WebGL2 contexts.
 const VS_WORLD = `
-attribute vec3 aPos; attribute vec2 aUV; attribute vec3 aMeta;
+attribute vec3 aPos; attribute vec2 aUV; attribute vec3 aMeta; attribute vec2 aLight;
 uniform mat4 uVP;
-varying vec2 vUV; varying vec3 vMeta; varying vec3 vWorld;
+varying vec2 vUV; varying vec3 vMeta; varying vec2 vLight; varying vec3 vWorld;
 void main() {
-  vUV = aUV; vMeta = aMeta; vWorld = aPos;
+  vUV = aUV; vMeta = aMeta; vLight = aLight; vWorld = aPos;
   gl_Position = uVP * vec4(aPos, 1.0);
 }`;
 
 const FS_WORLD = `
 precision highp float;
-varying vec2 vUV; varying vec3 vMeta; varying vec3 vWorld;
+varying vec2 vUV; varying vec3 vMeta; varying vec2 vLight; varying vec3 vWorld;
 uniform sampler2D uAtlas; uniform float uTime; uniform float uDay;
 void main() {
   vec4 tex = texture2D(uAtlas, vUV);
   float ao = vMeta.x, shade = vMeta.y, emis = vMeta.z;
+  float sky = vLight.x, blk = vLight.y;
+  // MC-style brightness: max(day-dimmed skylight, block light). Moonlight keeps
+  // the surface dimly readable at night; block light is day/night independent.
+  float light = max(sky * mix(0.12, 1.0, uDay), blk);
   vec3 sunCol = mix(vec3(1.0, 0.82, 0.62), vec3(1.08, 1.02, 0.95), uDay);
-  float pulse = emis > 0.5 ? (1.25 + 0.5 * sin(uTime * 2.4)) : 1.0;
-  float light = shade * ao * mix(0.32, 1.0, uDay) * pulse;
-  vec3 col = tex.rgb * (sunCol * light + vec3(1.0, 0.85, 0.4) * emis * 0.9);
+  vec3 col = tex.rgb * sunCol * light * shade * ao;
+  // warm add so glowstone reads hot against its own faces (subtle MC-style pulse)
+  float pulse = emis > 0.5 ? (1.0 + 0.08 * sin(uTime * 2.4)) : 1.0;
+  col += vec3(1.0, 0.85, 0.4) * blk * 0.35 * pulse;
   gl_FragColor = vec4(col, tex.a);
 }`;
 
@@ -678,12 +1003,13 @@ class Game {
     this.opts = opts;
     this.testMode = opts.test === true;
     this.world = new World();
+    this.light = new LightEngine(this.world);
     this.meshes = new Map();
     this.viewRadius = this.testMode ? 3 : 4;
     this.lastErr = null;
     this.sel = 0;
     this.inv = [1, 2, 3, 4, 6]; // 5 creative slots (default: grass dirt stone log plank)
-    this.palette = [1, 2, 3, 4, 5, 6, 7, 9]; // all assignable blocks (8 = bedrock excluded)
+    this.palette = [1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14]; // all assignable blocks (8 = bedrock excluded)
     this.invOpen = false;
     this.dayTime = 0.35;
     this.daySpeeds = [1 / 600, 1 / 180, 1 / 40]; // 10min / 3min / 24s per day
@@ -817,6 +1143,7 @@ class Game {
       if (dx * dx + dz * dz > (R + 0.5) ** 2) continue;
       const k = World.key(px + dx, pz + dz);
       if (!this.meshes.has(k)) this.buildMeshFor(px + dx, pz + dz);
+      else this.light.ensure(px + dx, pz + dz); // keep light warm so edits recompute next mesh build
     }
     for (const k of [...this.meshes.keys()]) {
       const [cx, cz] = k.split(',').map(Number);
@@ -827,9 +1154,13 @@ class Game {
   buildMeshFor(cx, cz) {
     const gl = this.gl, key = World.key(cx, cz);
     this.freeMesh(key);
-    // ensure this chunk + all 8 neighbors have raw data so boundary faces cull correctly
-    for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) this.world.getChunk(cx + dx, cz + dz);
-    const m = buildChunkMesh(this.world, cx, cz);
+    // ensure this chunk + all 8 neighbors have raw data and computed light so
+    // boundary faces cull correctly and per-vertex light samples the neighbor cell
+    for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) {
+      this.world.getChunk(cx + dx, cz + dz);
+      this.light.ensure(cx + dx, cz + dz);
+    }
+    const m = buildChunkMesh(this.world, cx, cz, (x, y, z) => this.light.lightAt(x, y, z));
     const mesh = {};
     // split if > 65535 verts and no u32
     if (!this._u32 && m.pos.length / 3 > 65535) {
@@ -837,7 +1168,7 @@ class Game {
       const n = 65535 * 3;
       mesh.vbo = gl.createBuffer();
       gl.bindBuffer(gl.ARRAY_BUFFER, mesh.vbo);
-      gl.bufferData(gl.ARRAY_BUFFER, this.interleave(m.pos.slice(0, n), m.uv.slice(0, n * 2 / 3), m.meta.slice(0, n)), gl.STATIC_DRAW);
+      gl.bufferData(gl.ARRAY_BUFFER, this.interleave(m.pos.slice(0, n), m.uv.slice(0, n * 2 / 3), m.meta.slice(0, 65535 * 5)), gl.STATIC_DRAW);
       mesh.ibo = gl.createBuffer();
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.ibo);
       gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(m.idx.slice(0, 40000)), gl.STATIC_DRAW);
@@ -867,12 +1198,14 @@ class Game {
   }
 
   interleave(pos, uv, meta) {
+    // 10 floats/vertex: pos(3) uv(2) meta(5: ao, shade, emis, sky, block)
     const n = pos.length / 3;
-    const out = new Float32Array(n * 8);
+    const out = new Float32Array(n * 10);
     for (let i = 0; i < n; i++) {
-      out[i * 8] = pos[i * 3]; out[i * 8 + 1] = pos[i * 3 + 1]; out[i * 8 + 2] = pos[i * 3 + 2];
-      out[i * 8 + 3] = uv[i * 2]; out[i * 8 + 4] = uv[i * 2 + 1];
-      out[i * 8 + 5] = meta[i * 3]; out[i * 8 + 6] = meta[i * 3 + 1]; out[i * 8 + 7] = meta[i * 3 + 2];
+      out[i * 10] = pos[i * 3]; out[i * 10 + 1] = pos[i * 3 + 1]; out[i * 10 + 2] = pos[i * 3 + 2];
+      out[i * 10 + 3] = uv[i * 2]; out[i * 10 + 4] = uv[i * 2 + 1];
+      out[i * 10 + 5] = meta[i * 5]; out[i * 10 + 6] = meta[i * 5 + 1]; out[i * 10 + 7] = meta[i * 5 + 2];
+      out[i * 10 + 8] = meta[i * 5 + 3]; out[i * 10 + 9] = meta[i * 5 + 4];
     }
     return out;
   }
@@ -883,6 +1216,17 @@ class Game {
     gl.deleteBuffer(m.vbo); gl.deleteBuffer(m.ibo);
     if (m.wvbo) { gl.deleteBuffer(m.wvbo); gl.deleteBuffer(m.wibo); }
     this.meshes.delete(key);
+    this.light.clearChunk(key.split(',').map(Number)[0], key.split(',').map(Number)[1]); // free light with the mesh
+  }
+
+  // An edit's light changes spread at most 15 blocks → the 3x3 chunk region
+  // around the edited chunk. Light values are baked into mesh VBOs, so those
+  // meshes must also rebuild (world.dirty), not just the light recompute.
+  markEditDirty(x, z) {
+    const cx = Math.floor(x / CH), cz = Math.floor(z / CH);
+    this.light.markDirty(cx, cz);
+    for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++)
+      this.world.dirty.add(World.key(cx + dx, cz + dz));
   }
 
   // ---------- spawn ----------
@@ -1016,6 +1360,7 @@ class Game {
     const id = this.world.block(hit.x, hit.y, hit.z);
     if (id === 8) { this.sfx('deny'); return; }
     this.world.setBlock(hit.x, hit.y, hit.z, 0);
+    this.markEditDirty(hit.x, hit.z);
     this.sfx('break');
     if (this.testMode) this.testResults.lastBroke = BLOCKS[id].name;
   }
@@ -1031,6 +1376,7 @@ class Game {
     const id = this.inv[this.sel];
     if (!id) { this.sfx('deny'); return; }
     this.world.setBlock(x, y, z, id);
+    this.markEditDirty(x, z);
     this.sfx('place');
     if (this.testMode) this.testResults.lastPlaced = BLOCKS[id].name;
   }
@@ -1167,7 +1513,7 @@ class Game {
           if (dx * dx + dy * dy + dz * dz > r * r) continue;
           const bx = Math.round(x) + dx, by = Math.round(y) + dy, bz = Math.round(z) + dz;
           const b = this.world.block(bx, by, bz);
-          if (b !== 0 && b !== 8) this.world.setBlock(bx, by, bz, 0);
+          if (b !== 0 && b !== 8) { this.world.setBlock(bx, by, bz, 0); this.markEditDirty(bx, bz); }
         }
     const dx = this.player.pos[0] - x, dy = this.player.pos[1] - y, dz = this.player.pos[2] - z;
     if (Math.hypot(dx, dy, dz) < r + 1) this.damage(4, 'explosion');
@@ -1303,12 +1649,13 @@ class Game {
     gl.uniform1i(this.progWorld.u('uAtlas'), 0);
 
     let triCount = 0;
-    const aPos = this.progWorld.a('aPos'), aUV = this.progWorld.a('aUV'), aMeta = this.progWorld.a('aMeta');
+    const aPos = this.progWorld.a('aPos'), aUV = this.progWorld.a('aUV'), aMeta = this.progWorld.a('aMeta'), aLight = this.progWorld.a('aLight');
     const bindWorld = (vbo, ibo) => {
       gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
-      gl.enableVertexAttribArray(aPos); gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, 32, 0);
-      gl.enableVertexAttribArray(aUV); gl.vertexAttribPointer(aUV, 2, gl.FLOAT, false, 32, 12);
-      gl.enableVertexAttribArray(aMeta); gl.vertexAttribPointer(aMeta, 3, gl.FLOAT, false, 32, 20);
+      gl.enableVertexAttribArray(aPos); gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, 40, 0);
+      gl.enableVertexAttribArray(aUV); gl.vertexAttribPointer(aUV, 2, gl.FLOAT, false, 40, 12);
+      gl.enableVertexAttribArray(aMeta); gl.vertexAttribPointer(aMeta, 3, gl.FLOAT, false, 40, 20);
+      gl.enableVertexAttribArray(aLight); gl.vertexAttribPointer(aLight, 2, gl.FLOAT, false, 40, 32);
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
     };
     for (const [, m] of this.meshes) {
@@ -1632,7 +1979,7 @@ $('inv').addEventListener('click', (e) => {
 });
 
 // hotbar (5 creative slots, mirrors game.inv)
-const SWATCH = { 1: '#5fbf3f', 2: '#8a5a34', 3: '#8d8d92', 4: '#6b4a2b', 5: '#3e8f2e', 6: '#b08a4f', 7: '#ffd54a', 9: '#e7d8a8' };
+const SWATCH = { 1: '#5fbf3f', 2: '#8a5a34', 3: '#8d8d92', 4: '#6b4a2b', 5: '#3e8f2e', 6: '#b08a4f', 7: '#ffd54a', 9: '#e7d8a8', 10: '#3a3a3a', 11: '#d8af93', 12: '#c46e3c', 13: '#fcee4b', 14: '#53ecee' };
 function buildHotbar() {
   const hb = $('hotbar');
   hb.innerHTML = '';
