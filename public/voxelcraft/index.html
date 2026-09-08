@@ -326,45 +326,63 @@ function shade(hex, dir) {
   return `rgb(${r},${g},${b})`;
 }
 
+// --- Route A: vanilla-palette hex reference (locked 2026-09-07) ---
+// Base color of each tile retuned to the vanilla 16x16 average; mottling is a
+// shade or two around the base so the perceived (distance-averaged) color is the
+// vanilla value. No external assets (Route B — pixel-exact, needs Dan-supplied
+// atlas — is deferred).
+//   tile          base        notes
+//   GRASS_TOP     #6fae4c     mottled green
+//   GRASS_SIDE    #866043 + #6fae4c cap (3px)
+//   DIRT          #866043     brown
+//   STONE         #7d7d7d     neutral grey mottle
+//   LOG_SIDE      #6e5230     oak bark vertical grain
+//   LOG_TOP       #6e5230     oak growth rings
+//   LEAVES        #5a8f39     opaque green mottle
+//   PLANK         #b58e58     oak plank
+//   GLOW          #ffd54a     emissive (shader pulse)
+//   BEDROCK       #3a3a3e     high-contrast grey/black
+//   SAND          #dbcf8f     pale tan
+//   WATER         #2a5bc0 a.62
 const painters = {
   [T.GRASS_TOP](ctx, ox, oy, rand) {
-    pxFill(ctx, ox, oy, 16, 16, '#5fbf3f');
-    for (let i = 0; i < 26; i++) px(ctx, ox + (rand() * 16) | 0, oy + (rand() * 16) | 0, rand() < 0.5 ? '#54a837' : '#6fd04e');
+    pxFill(ctx, ox, oy, 16, 16, '#6fae4c');
+    for (let i = 0; i < 26; i++) px(ctx, ox + (rand() * 16) | 0, oy + (rand() * 16) | 0, rand() < 0.5 ? '#5f9a40' : '#7fc45c');
   },
   [T.GRASS_SIDE](ctx, ox, oy, rand) {
-    pxFill(ctx, ox, oy, 16, 16, '#8a5a34');
-    for (let i = 0; i < 22; i++) px(ctx, ox + (rand() * 16) | 0, oy + 4 + (rand() * 12) | 0, rand() < 0.5 ? '#7a4d2b' : '#99673d');
-    pxFill(ctx, ox, oy, 16, 3, '#5fbf3f');
-    for (let x = 0; x < 16; x++) if (rand() < 0.6) px(ctx, ox + x, oy + 3, '#54a837');
+    pxFill(ctx, ox, oy, 16, 16, '#866043');
+    for (let i = 0; i < 22; i++) px(ctx, ox + (rand() * 16) | 0, oy + 4 + (rand() * 12) | 0, rand() < 0.5 ? '#7a5638' : '#94684a');
+    pxFill(ctx, ox, oy, 16, 3, '#6fae4c');
+    for (let x = 0; x < 16; x++) if (rand() < 0.6) px(ctx, ox + x, oy + 3, '#5f9a40');
   },
-  [T.DIRT](ctx, ox, oy, rand) { speckle(ctx, ox, oy, '#8a5a34', 26, rand); },
+  [T.DIRT](ctx, ox, oy, rand) { speckle(ctx, ox, oy, '#866043', 26, rand); },
   [T.STONE](ctx, ox, oy, rand) {
-    pxFill(ctx, ox, oy, 16, 16, '#8d8d92');
+    pxFill(ctx, ox, oy, 16, 16, '#7d7d7d');
     for (let i = 0; i < 12; i++) {
       const x = (rand() * 16) | 0, y = (rand() * 16) | 0, w = 2 + (rand() * 3) | 0;
-      ctx.fillStyle = rand() < 0.5 ? '#7e7e83' : '#9b9ba0'; ctx.fillRect(ox + x, oy + y, w, 1);
+      ctx.fillStyle = rand() < 0.5 ? '#6f6f6f' : '#8c8c8c'; ctx.fillRect(ox + x, oy + y, w, 1);
     }
   },
   [T.LOG_SIDE](ctx, ox, oy, rand) {
-    pxFill(ctx, ox, oy, 16, 16, '#6b4a2b');
-    for (let x = 0; x < 16; x += 4) { ctx.fillStyle = '#593d23'; ctx.fillRect(ox + x, oy, 1, 16); }
-    for (let i = 0; i < 8; i++) px(ctx, ox + (rand() * 16) | 0, oy + (rand() * 16) | 0, '#7a5633');
+    pxFill(ctx, ox, oy, 16, 16, '#6e5230');
+    for (let x = 0; x < 16; x += 4) { ctx.fillStyle = '#57421f'; ctx.fillRect(ox + x, oy, 1, 16); }
+    for (let i = 0; i < 8; i++) px(ctx, ox + (rand() * 16) | 0, oy + (rand() * 16) | 0, '#7d5c34');
   },
   [T.LOG_TOP](ctx, ox, oy, rand) {
-    pxFill(ctx, ox, oy, 16, 16, '#6b4a2b');
-    ctx.fillStyle = '#9a7444'; ctx.fillRect(ox + 3, oy + 3, 10, 10);
-    ctx.fillStyle = '#7a5633'; ctx.fillRect(ox + 5, oy + 5, 6, 6);
-    ctx.fillStyle = '#593d23'; ctx.fillRect(ox + 7, oy + 7, 2, 2);
+    pxFill(ctx, ox, oy, 16, 16, '#6e5230');
+    ctx.fillStyle = '#a2804e'; ctx.fillRect(ox + 3, oy + 3, 10, 10);
+    ctx.fillStyle = '#7d5c34'; ctx.fillRect(ox + 5, oy + 5, 6, 6);
+    ctx.fillStyle = '#57421f'; ctx.fillRect(ox + 7, oy + 7, 2, 2);
   },
   [T.LEAVES](ctx, ox, oy, rand) {
-    pxFill(ctx, ox, oy, 16, 16, '#3e8f2e');
-    for (let i = 0; i < 34; i++) px(ctx, ox + (rand() * 16) | 0, oy + (rand() * 16) | 0, rand() < 0.4 ? '#2f7022' : '#4da33a');
-    for (let i = 0; i < 5; i++) px(ctx, ox + (rand() * 16) | 0, oy + (rand() * 16) | 0, '#1f4d16');
+    pxFill(ctx, ox, oy, 16, 16, '#5a8f39');
+    for (let i = 0; i < 34; i++) px(ctx, ox + (rand() * 16) | 0, oy + (rand() * 16) | 0, rand() < 0.4 ? '#4a7a2c' : '#6aa048');
+    for (let i = 0; i < 5; i++) px(ctx, ox + (rand() * 16) | 0, oy + (rand() * 16) | 0, '#35601e');
   },
   [T.PLANK](ctx, ox, oy, rand) {
-    pxFill(ctx, ox, oy, 16, 16, '#b08a4f');
-    for (let y = 0; y < 16; y += 4) { ctx.fillStyle = '#8a6a3a'; ctx.fillRect(ox, oy + y, 16, 1); }
-    for (let i = 0; i < 6; i++) px(ctx, ox + (rand() * 16) | 0, oy + (rand() * 16) | 0, '#c09a5f');
+    pxFill(ctx, ox, oy, 16, 16, '#b58e58');
+    for (let y = 0; y < 16; y += 4) { ctx.fillStyle = '#8a6a3f'; ctx.fillRect(ox, oy + y, 16, 1); }
+    for (let i = 0; i < 6; i++) px(ctx, ox + (rand() * 16) | 0, oy + (rand() * 16) | 0, '#c49d63');
   },
   [T.GLOW](ctx, ox, oy, rand) {
     // pulse-block: bright core, drawn once — animation is a shader brightness pulse, not texture swap
@@ -379,14 +397,14 @@ const painters = {
     pxFill(ctx, ox, oy, 16, 16, '#3a3a3e');
     for (let i = 0; i < 10; i++) {
       const x = (rand() * 16) | 0, y = (rand() * 16) | 0;
-      ctx.fillStyle = rand() < 0.5 ? '#26262a' : '#55555c'; ctx.fillRect(ox + x, oy + y, 2 + (rand() * 2) | 0, 2);
+      ctx.fillStyle = rand() < 0.5 ? '#1f1f22' : '#5c5c64'; ctx.fillRect(ox + x, oy + y, 2 + (rand() * 2) | 0, 2);
     }
   },
-  [T.SAND](ctx, ox, oy, rand) { speckle(ctx, ox, oy, '#e7d8a8', 24, rand); },
+  [T.SAND](ctx, ox, oy, rand) { speckle(ctx, ox, oy, '#dbcf8f', 24, rand); },
   [T.WATER](ctx, ox, oy, rand) {
     ctx.globalAlpha = 0.62;
-    pxFill(ctx, ox, oy, 16, 16, '#3a6fd8');
-    for (let i = 0; i < 8; i++) px(ctx, ox + (rand() * 16) | 0, oy + (rand() * 16) | 0, '#5a8ae8');
+    pxFill(ctx, ox, oy, 16, 16, '#2a5bc0');
+    for (let i = 0; i < 8; i++) px(ctx, ox + (rand() * 16) | 0, oy + (rand() * 16) | 0, '#3a6bd0');
     ctx.globalAlpha = 1;
   },
 };
@@ -408,22 +426,60 @@ painters[T.COPPER_ORE] = orePainter('#c46e3c');
 painters[T.GOLD_ORE] = orePainter('#fcee4b');
 painters[T.DIAMOND_ORE] = orePainter('#53ecee');
 
+// --- anti-bleed padded atlas ---
+// Tiles are painted into a (16 + 2*PAD) px cell, then a 2px RING around each
+// tile is filled with a replicate of the tile's own edge row/col. With NEAREST
+// filtering, a fragment whose UV lands on (or just outside) a tile boundary
+// reads that tile's replicated edge — never a neighbor tile and never the
+// transparent-black canvas. This is scale-independent: it works at every
+// distance, not just "inset is big enough today". PAD is the safe margin.
+const PAD = 2;
+const CELL = 16 + 2 * PAD;      // 20px per tile
+const ATLAS = 8 * CELL;         // 160px canvas
+
 function buildAtlas() {
   const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = 128; // 8x8 of 16px
+  canvas.width = canvas.height = ATLAS;
   const ctx = canvas.getContext('2d');
   const rand = mulberry32(0xC0FFEE);
   for (const id in painters) {
-    painters[id](ctx, (id % 8) * 16, ((id / 8) | 0) * 16, rand);
+    const ox = (id % 8) * CELL + PAD;      // paint the 16x16 centered in its cell
+    const oy = ((id / 8) | 0) * CELL + PAD;
+    painters[id](ctx, ox, oy, rand);
+    padTile(ctx, ox, oy);
   }
   return canvas;
 }
 
-// UVs for tile `t` inside the 8x8 atlas, with a tiny inset to avoid bleeding.
+// replicate the 16x16 tile's edge row/col into the 2px ring around it
+function padTile(ctx, ox, oy) {
+  const edge = ctx.getImageData(ox, oy, 16, 16).data; // 16x16 RGBA
+  const put = (px, py, srcX, srcY) => {
+    const i = (srcY * 16 + srcX) * 4;
+    ctx.fillStyle = `rgba(${edge[i]},${edge[i + 1]},${edge[i + 2]},${(edge[i + 3] / 255).toFixed(3)})`;
+    ctx.fillRect(ox + px, oy + py, 1, 1);
+  };
+  for (let c = 0; c < 16; c++) {
+    // left / right rings (2px each)
+    put(-1, c, 0, c); put(-2, c, 0, c);
+    put(16, c, 15, c); put(17, c, 15, c);
+    // top / bottom rings (2px each)
+    put(c, -1, c, 0); put(c, -2, c, 0);
+    put(c, 16, c, 15); put(c, 17, c, 15);
+  }
+  // corners (replicate the matching corner pixel)
+  put(-1, -1, 0, 0); put(-2, -1, 0, 0); put(-1, -2, 0, 0); put(-2, -2, 0, 0);
+  put(16, -1, 15, 0); put(17, -1, 15, 0); put(16, -2, 15, 0); put(17, -2, 15, 0);
+  put(-1, 16, 0, 15); put(-2, 16, 0, 15); put(-1, 17, 0, 15); put(-2, 17, 0, 15);
+  put(16, 16, 15, 15); put(17, 16, 15, 15); put(16, 17, 15, 15); put(17, 17, 15, 15);
+}
+
+// UVs for tile `t` inside the padded 8x8 atlas. Map exactly to the inner 16x16
+// region; the surrounding 2px replicate ring is the free safety margin, so no
+// extra inset is needed (and none is wanted — an inset would shrink the tile).
 function tileUV(t) {
-  const s = 1 / 8, e = 1 / 128 * 0.5;
-  const x = (t % 8) * s, y = ((t / 8) | 0) * s;
-  return [x + e, y + e, x + s - e, y + s - e];
+  const x0 = (t % 8) * CELL + PAD, y0 = ((t / 8) | 0) * CELL + PAD;
+  return [x0 / ATLAS, y0 / ATLAS, (x0 + 16) / ATLAS, (y0 + 16) / ATLAS];
 }
 
 // ===== src/world.js =====
@@ -917,6 +973,11 @@ function aoFor(world, x, y, z, face, cor) {
 // 100% JS, WebGL (ES 1.00 shaders → runs on WebGL1 AND WebGL2, all modern Safari), zero deps.
 
 
+// Player collision/eye dimensions — vanilla Minecraft (1 block = 1 m).
+// Player hitbox 0.6 x 1.8, eye 1.62 when standing. Single source of truth;
+// collide()/raycast()/shootArrow()/render()/placeBlock() all read these.
+const PLAYER_W = 0.6, PLAYER_H = 1.8, EYE = 1.62;
+
 // GLSL ES 1.00 — accepted by both WebGL1 and WebGL2 contexts.
 const VS_WORLD = `
 attribute vec3 aPos; attribute vec2 aUV; attribute vec3 aMeta; attribute vec2 aLight;
@@ -1065,8 +1126,8 @@ class Game {
     gl.bindBuffer(gl.ARRAY_BUFFER, this.skyVBO);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
 
-    // unit box (for target highlight)
-    this._boxGeo = this.makeBoxGeo([0.02, 0.02, 0.02]);
+    // target-highlight wireframe (12 edges of a unit box, drawn at 1.004 scale)
+    this._boxGeo = this.makeBoxLines([0.05, 0.05, 0.05]);
     // entity geometries
     this._entGeo.cow = this.buildEntityGeo(COW_PARTS);
     this._entGeo.pig = this.buildEntityGeo(PIG_PARTS);
@@ -1075,29 +1136,26 @@ class Game {
     return true;
   }
 
-  makeBoxGeo(color) {
+  // 12 wireframe edges of a unit box — the target highlight. Line pairs, no
+  // indices; drawn with LINE_LOOP disabled / gl.LINES. Slightly larger than the
+  // block (1.004) so no edge is coplanar with a block face (no z-fight).
+  makeBoxLines(color) {
     const gl = this.gl;
-    const s = 0.5;
-    const V = [];
-    // 6 faces, outward CCW
-    const faces = [
-      [[-s,-s,s],[s,-s,s],[s,s,s],[-s,s,s]],          // +z
-      [[s,-s,-s],[-s,-s,-s],[-s,s,-s],[s,s,-s]],      // -z
-      [[-s,s,s],[s,s,s],[s,s,-s],[-s,s,-s]],          // +y
-      [[-s,-s,-s],[s,-s,-s],[s,-s,s],[-s,-s,s]],      // -y
-      [[s,-s,s],[s,-s,-s],[s,s,-s],[s,s,s]],          // +x
-      [[-s,-s,-s],[-s,-s,s],[-s,s,s],[-s,s,-s]],      // -x
+    const s = 0.502;
+    const c = color;
+    // edge endpoints: 12 edges x 2 verts
+    const E = [
+      [-s,-s,-s, s,-s,-s], [-s,-s,s, s,-s,s],   // bottom
+      [-s,s,-s, s,s,-s],  [-s,s,s,  s,s,s],     // top
+      [-s,-s,-s, -s,s,-s],[s,-s,-s, s,s,-s],    // back
+      [-s,-s,s,  -s,s,s], [s,-s,s,  s,s,s],     // front
     ];
-    for (const face of faces) for (const p of face) V.push(p[0], p[1], p[2], color[0], color[1], color[2]);
-    const idx = [];
-    for (let i = 0; i < 6; i++) { const b = i * 4; idx.push(b, b + 1, b + 2, b, b + 2, b + 3); }
+    const V = [];
+    for (const e of E) V.push(e[0], e[1], e[2], c[0], c[1], c[2], e[3], e[4], e[5], c[0], c[1], c[2]);
     const vbo = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(V), gl.STATIC_DRAW);
-    const ibo = gl.createBuffer();
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl.STATIC_DRAW);
-    return { vbo, ibo, count: idx.length };
+    return { vbo, count: 24 };
   }
 
   buildEntityGeo(parts) {
@@ -1248,7 +1306,7 @@ class Game {
   // ---------- physics ----------
   collide() {
     const p = this.player;
-    const R = 0.3, H = 0.9;
+    const R = PLAYER_W / 2, H = PLAYER_H;
     for (let x = Math.floor(p.pos[0] - R); x <= Math.floor(p.pos[0] + R); x++) {
       for (let y = Math.floor(p.pos[1]); y <= Math.floor(p.pos[1] + H); y++) {
         for (let z = Math.floor(p.pos[2] - R); z <= Math.floor(p.pos[2] + R); z++) {
@@ -1289,12 +1347,13 @@ class Game {
     if (this.keys['a'] || this.keys['arrowleft']) ax -= 1;
     if (this.keys['d'] || this.keys['arrowright']) ax += 1;
     if (this.touch.joy) { ax = this.touch.joy.dx; az = this.touch.joy.dy; }
-    if (this.testMode) {
+    if (this.testMode && this.testTicks < 100) {
       // no auto-walk: wandering drags the player into hills and buries the
       // camera in solid rock (raycast face=null, place always fails).
       // Ease the camera down to a resting pitch so the crosshair lands on the
       // ground within reach (a flat view from eye height misses the ground
       // block below, which is correct raycast behavior, not a bug).
+      // (Skipped during the tick 100-140 sim window, which pins pitch itself.)
       p.yaw += dt * 0.15;
       p.pitch = Math.min(0.3, p.pitch + (0.3 - p.pitch) * dt * 0.5);
     }
@@ -1332,7 +1391,7 @@ class Game {
   // ---------- raycast ----------
   raycast(maxDist = 6) {
     const p = this.player;
-    const ey = p.pos[1] + 0.7;
+    const ey = p.pos[1] + EYE;
     const dir = [
       -Math.sin(p.yaw) * Math.cos(p.pitch),
       -Math.sin(p.pitch),
@@ -1370,7 +1429,7 @@ class Game {
     if (!hit || !hit.face) return;
     const [x, y, z] = [hit.x + hit.face[0], hit.y + hit.face[1], hit.z + hit.face[2]];
     const p = this.player;
-    if (x + 1 > p.pos[0] - 0.3 && x < p.pos[0] + 0.3 && y + 1 > p.pos[1] && y < p.pos[1] + 0.9 && z + 1 > p.pos[2] - 0.3 && z < p.pos[2] + 0.3) {
+    if (x + 1 > p.pos[0] - PLAYER_W / 2 && x < p.pos[0] + PLAYER_W / 2 && y + 1 > p.pos[1] && y < p.pos[1] + PLAYER_H && z + 1 > p.pos[2] - PLAYER_W / 2 && z < p.pos[2] + PLAYER_W / 2) {
       this.sfx('deny'); return;
     }
     const id = this.inv[this.sel];
@@ -1392,9 +1451,19 @@ class Game {
     if (this.invOpen === open) return;
     this.invOpen = open;
     if (open) document.exitPointerLock?.(); // need the cursor to pick blocks
-    else this.canvas.requestPointerLock?.();
+    else this.tryReLock();
     if (this.opts.onInv) this.opts.onInv(open);
     this.sfx('click');
+  }
+
+  // Re-acquire pointer lock after it dropped (Escape→inventory→close, window
+  // blur, or the browser's re-lock cooldown). Called from the canvas mousedown
+  // and from setInv(false). A held keypress or a Space tap never re-locks, so
+  // without the mousedown path a player still holding WASD gets no mouse-look
+  // back until they happen to click. Test mode: no synthetic lock requests.
+  tryReLock() {
+    if (this.testMode || this.pointerLocked || this.paused || this.dead || this.invOpen) return;
+    this.canvas.requestPointerLock?.();
   }
 
   // ---------- entities ----------
@@ -1530,7 +1599,7 @@ class Game {
 
   shootArrow() {
     const p = this.player;
-    const ey = p.pos[1] + 0.7;
+    const ey = p.pos[1] + EYE;
     const dir = [
       -Math.sin(p.yaw) * Math.cos(p.pitch),
       -Math.sin(p.pitch),
@@ -1576,6 +1645,15 @@ class Game {
     return 1; // night (wraps 0.85→0.15)
   }
 
+  // shared mouse/touch look math. dy is negative when the cursor moves UP, so
+  // += makes mouse-up look up (standard, non-inverted). Extracted so the test
+  // harness drives the exact live code path, not a copy.
+  applyLook(dx, dy, s) {
+    this.player.yaw += dx * s;
+    this.player.pitch += dy * s;
+    this.player.pitch = Math.max(-1.5, Math.min(1.5, this.player.pitch));
+  }
+
   // ---------- render ----------
   render(now) {
     const gl = this.gl;
@@ -1591,8 +1669,8 @@ class Game {
     const p = this.player;
     const fov = 70 * Math.PI / 180;
     const tanF = Math.tan(fov / 2);
-    const proj = M4.perspective(fov, W / H, 0.1, 300);
-    const eye = [p.pos[0], p.pos[1] + 0.7, p.pos[2]];
+    const proj = M4.perspective(fov, W / H, 0.2, 120); // tight near/far: 24-bit depth needs a small far/near ratio or walls at the view edge z-fight
+    const eye = [p.pos[0], p.pos[1] + EYE, p.pos[2]];
     const fwd = [
       -Math.sin(p.yaw) * Math.cos(p.pitch),
       -Math.sin(p.pitch),
@@ -1697,7 +1775,11 @@ class Game {
       gl.drawElements(gl.TRIANGLES, geo.count, gl.UNSIGNED_SHORT, 0);
     }
 
-    // target highlight
+    // target highlight — wireframe, slightly oversized (1.004) so no edge is
+    // coplanar with a block face; depth written (it sits outside the block) but
+    // it is lines, so it can't paint the aimed face black (the old solid
+    // unit-cube box z-fought the face it outlined — a real source of "black
+    // bleeding").
     const hit = this.raycast();
     if (hit) {
       const t = M4.identity(); t[12] = hit.x + 0.5; t[13] = hit.y + 0.5; t[14] = hit.z + 0.5;
@@ -1705,8 +1787,7 @@ class Game {
       gl.bindBuffer(gl.ARRAY_BUFFER, this._boxGeo.vbo);
       gl.enableVertexAttribArray(sPos); gl.vertexAttribPointer(sPos, 3, gl.FLOAT, false, 24, 0);
       gl.enableVertexAttribArray(sCol); gl.vertexAttribPointer(sCol, 3, gl.FLOAT, false, 24, 12);
-      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this._boxGeo.ibo);
-      gl.drawElements(gl.TRIANGLES, this._boxGeo.count, gl.UNSIGNED_SHORT, 0);
+      gl.drawArrays(gl.LINES, 0, this._boxGeo.count);
     }
 
     this.stats.tri = triCount;
@@ -1729,10 +1810,15 @@ class Game {
         else this.togglePause();
       }
       if (k === 'f') { this.speedIdx = (this.speedIdx + 1) % 3; }
+      if (k === 'g' && !this.invOpen && !this.dead) this.shootArrow();
       e.preventDefault();
     });
     window.addEventListener('keyup', (e) => { this.keys[e.key.toLowerCase()] = false; });
     c.addEventListener('mousedown', (e) => {
+      // Re-acquire pointer lock on a deliberate click if it dropped (see
+      // tryReLock). The same click still breaks/places below, so acting while
+      // moving keeps working.
+      this.tryReLock();
       if (this.paused || this.dead || this.invOpen) return;
       if (e.button === 0 || e.button === 1) this.breakBlock();
       else if (e.button === 2) this.placeBlock();
@@ -1741,6 +1827,11 @@ class Game {
     c.addEventListener('click', () => {
       if (!this.pointerLocked && !this.testMode) c.requestPointerLock?.();
     });
+    document.addEventListener('pointerlockerror', () => {
+      // requestPointerLock was rejected (cooldown / not a user gesture). Track it
+      // so a later deliberate mousedown re-tries; we never force a re-acquire.
+      this.pointerLockFailed = true;
+    });
     c.addEventListener('wheel', (e) => {
       e.preventDefault();
       const n = this.inv.length;
@@ -1748,11 +1839,7 @@ class Game {
       this.sfx('click');
     }, { passive: false });
     document.addEventListener('mousemove', (e) => {
-      if (this.pointerLocked) {
-        this.player.yaw += e.movementX * 0.0022;
-        this.player.pitch -= e.movementY * 0.0022;
-        this.player.pitch = Math.max(-1.5, Math.min(1.5, this.player.pitch));
-      }
+      if (this.pointerLocked) this.applyLook(e.movementX, e.movementY, 0.0022);
     });
     document.addEventListener('pointerlockchange', () => {
       this.pointerLocked = document.pointerLockElement === c;
@@ -1773,9 +1860,7 @@ class Game {
           this.touch.joy.dy = Math.max(-1, Math.min(1, (t.clientY - this.touch.joy.y) / 50));
         }
         if (this.touch.look && t.identifier === this.touch.look.id) {
-          this.player.yaw += (t.clientX - this.touch.look.x) * 0.005;
-          this.player.pitch -= (t.clientY - this.touch.look.y) * 0.005;
-          this.player.pitch = Math.max(-1.5, Math.min(1.5, this.player.pitch));
+          this.applyLook(t.clientX - this.touch.look.x, t.clientY - this.touch.look.y, 0.005);
           this.touch.look.x = t.clientX; this.touch.look.y = t.clientY;
         }
       }
@@ -1860,6 +1945,58 @@ class Game {
         this.ensureChunks();
         if (this.testMode) {
           this.testTicks++;
+          // ---- WS1: record player dims + entity hitbox tops (vanilla check) ----
+          if (this.testTicks === 40) {
+            this.testResults.playerH = PLAYER_H;
+            this.testResults.playerEye = EYE;
+            this.testResults.entTop = {
+              cow: +Math.max(...COW_PARTS.map(p => p.oy + p.sy / 2)).toFixed(3),
+              pig: +Math.max(...PIG_PARTS.map(p => p.oy + p.sy / 2)).toFixed(3),
+              zombie: +Math.max(...ZOMBIE_PARTS.map(p => p.oy + p.sy / 2)).toFixed(3),
+              creeper: +Math.max(...CREEPER_PARTS.map(p => p.oy + p.sy / 2)).toFixed(3),
+            };
+            this.testResults.entFeet = {
+              cow: +Math.min(...COW_PARTS.map(p => p.oy - p.sy / 2)).toFixed(3),
+              pig: +Math.min(...PIG_PARTS.map(p => p.oy - p.sy / 2)).toFixed(3),
+              zombie: +Math.min(...ZOMBIE_PARTS.map(p => p.oy - p.sy / 2)).toFixed(3),
+              creeper: +Math.min(...CREEPER_PARTS.map(p => p.oy - p.sy / 2)).toFixed(3),
+            };
+          }
+          // ---- WS2: pitch direction (drives the real applyLook path) ----
+          // "Look up" is measured on the RAY direction (dir[1] = -sin(pitch)),
+          // not the raw pitch value: in this codebase looking up DECREASES pitch.
+          if (this.testTicks === 70) {
+            const vy = () => -Math.sin(this.player.pitch); // >0 = looking up
+            const v0 = vy();
+            this.applyLook(0, -100, 0.0022); // mouse UP (negative dy)
+            this.testResults.pitchUp = vy() - v0;   // must be > 0 (looked up)
+            const v1 = vy();
+            this.applyLook(0, +100, 0.0022); // mouse DOWN (positive dy)
+            this.testResults.pitchDown = vy() - v1; // must be < 0 (looked down)
+          }
+          // ---- WS2: simultaneous move + jump + place while W held ----
+          if (this.testTicks === 100) {
+            this.testResults.sim = { start: [...this.player.pos], moved: false, jumped: false, placed: false };
+            this.keys['w'] = true;
+            this.player.pitch = 0.4; // aim down so the place ray hits the ground
+          }
+          if (this.testTicks >= 100 && this.testTicks <= 140) {
+            const s = this.testResults.sim; // set at tick 100, so always defined here
+            if (this.testTicks === 101) { s.baseY = this.player.pos[1]; s.maxY = s.baseY; }
+            // tick 110: place AND jump in the SAME frame while W is held —
+            // genuinely simultaneous. placeBlock reads the current (grounded)
+            // position; the jump only sets velocity, so both co-occur and the
+            // ground ray still resolves (placing mid-air would miss maxDist —
+            // that's a test artifact, not a place bug).
+            if (this.testTicks === 110) { this.placeBlock(); this.keys[' '] = true; setTimeout(() => this.keys[' '] = false, 60); }
+            if (this.player.pos[1] > s.maxY) s.maxY = this.player.pos[1];
+            if (this.testTicks === 140) {
+              s.moved = Math.hypot(this.player.pos[0] - s.start[0], this.player.pos[2] - s.start[2]) > 0.3;
+              s.jumped = s.maxY - s.baseY > 0.3;
+              s.placed = this.testResults.lastPlaced !== undefined;
+              this.keys['w'] = false;
+            }
+          }
           if (this.testTicks % 90 === 0) this.breakBlock();
           if (this.testTicks % 130 === 0) this.placeBlock();
           if (this.testTicks === 150) {
@@ -1867,6 +2004,218 @@ class Game {
             this.setSlot(7, 2);
             this.sel = 2;
             this.testResults.invSwapped = true;
+          }
+          if (this.testTicks === 200) {
+            // WS2: open the inventory through the real path — the onInv handler
+            // runs buildInv() and records invPalette (was the empty-panel bug).
+            // Close on the next tick so the player isn't paused for the rest.
+            this.setInv(true);
+            setTimeout(() => this.setInv(false), 30);
+          }
+          if (this.testTicks === 205) {
+            // WS2 (2d.1): pointer-lock drop recovery — simulate the lock having
+            // dropped (Escape→inventory→close, blur, cooldown), call the real
+            // tryReLock(), and confirm it re-requests lock on the canvas.
+            // tryReLock bails in testMode (no synthetic lock), so toggle it off
+            // around the call; negative check: an already-held lock must NOT be
+            // re-requested (no spam).
+            const c = this.canvas;
+            let requested = 0;
+            const orig = c.requestPointerLock;
+            c.requestPointerLock = () => { requested++; };
+            const saved = { testMode: this.testMode, lock: this.pointerLocked };
+            this.testMode = false;
+            this.pointerLocked = false;
+            this.tryReLock();
+            const reAcquired = requested === 1;
+            this.pointerLocked = true;
+            this.tryReLock();
+            const notSpam = requested === 1;
+            c.requestPointerLock = orig;
+            this.testMode = saved.testMode;
+            this.pointerLocked = saved.lock;
+            this.testResults.relock = { reAcquired, notSpam };
+          }
+          if (this.testTicks === 220) {
+            // WS1: head-fit in a 2.0-tall corridor (the vanilla-walkable height).
+            // Floor = the existing surface block h (top at h+1); ceiling = one
+            // block placed at h+3 (bottom at h+3) → clear height 2.0. A correct
+            // 1.8 player settles feet at h+1, head at h+2.8 → exactly 0.2 clearance
+            // to the ceiling. (A 1.0-tall gap could NOT fit the player — that's
+            // precisely what 1.8 means.) headTopY encodes PLAYER_H behaviorally.
+            const px = this.player.pos[0], py = this.player.pos[1], pz = this.player.pos[2];
+            for (let ox = -10; ox <= 10 && !this.testResults.tunnel; ox++) {
+              for (let oz = -10; oz <= 10; oz++) {
+                const x = Math.floor(px) + ox, z = Math.floor(pz) + oz;
+                const h = this.world.surfaceY(x, z);
+                if (h < 14 || h + 4 > 46) continue;
+                if (!this.world.solid(x, h, z)) continue; // floor (surface)
+                if (this.world.solid(x, h + 1, z) || this.world.solid(x, h + 2, z) || this.world.solid(x, h + 3, z)) continue;
+                this.world.setBlock(x, h + 3, z, 3); // ceiling → 2.0 gap (h+1 .. h+3)
+                this.player.pos = [x + 0.5, h + 1, z + 0.5]; // feet on floor top
+                this.player.vel = [0, 0, 0];
+                for (const k in this.keys) this.keys[k] = false;
+                this.step(1 / 60);
+                this.testResults.tunnel = {
+                  headY: +this.player.pos[1].toFixed(4),
+                  headTopY: +(this.player.pos[1] + PLAYER_H).toFixed(4),
+                  ceiling: h + 3,
+                  x, z,
+                };
+                this.player.pos = [px, py, pz];
+                this.player.vel = [0, 0, 0];
+                break;
+              }
+              if (this.testResults.tunnel) break;
+            }
+          }
+          if (this.testTicks === 250) {
+            // WS2 (2d.3): high-speed wall — at 20 m/s (≈3× max gameplay speed)
+            // the sub-stepped integrator must stop the player in front of a
+            // wall (no tunneling) and keep the feet on the ground.
+            const px = Math.floor(this.player.pos[0]), pz = Math.floor(this.player.pos[2]);
+            for (let ox = -10; ox <= 10 && !this.testResults.substep; ox++) {
+              for (let oz = -10; oz <= 10; oz++) {
+                const x = Math.floor(px) + ox, z = Math.floor(pz) + oz;
+                const h = this.world.surfaceY(x, z);
+                if (h < 14 || h + 4 > 46) continue;
+                if (!this.world.solid(x, h, z)) continue;
+                let flat = true;
+                for (let dx = 1; dx <= 4; dx++) if (this.world.surfaceY(x + dx, z) !== h) { flat = false; break; }
+                if (!flat) continue;
+                const wx = x + 4; // 2-tall stone wall
+                this.world.setBlock(wx, h + 1, z, 3);
+                this.world.setBlock(wx, h + 2, z, 3);
+                this.markEditDirty(wx, z);
+                this.ensureChunks();
+                const saved = { pos: [...this.player.pos], vel: [...this.player.vel], keys: { ...this.keys } };
+                for (const k in this.keys) this.keys[k] = false;
+                this.player.pos = [x + 0.5, h + 1, z + 0.5];
+                let grounded = true;
+                for (let i = 0; i < 40; i++) {
+                  this.player.vel = [20, 0, 0]; // force constant 20 m/s
+                  this.step(1 / 60);
+                  if (Math.abs(this.player.pos[1] - (h + 1)) > 0.05) grounded = false;
+                }
+                const fx = this.player.pos[0];
+                const res = {
+                  stopped: fx < wx + 0.4 && fx > x,        // halted in front of the wall
+                  noTunnel: fx <= wx + 0.6 - PLAYER_W / 2 + 0.05, // feet not past the wall face
+                  grounded, finalX: +fx.toFixed(2), wallX: wx,
+                };
+                this.player.pos = saved.pos; this.player.vel = saved.vel;
+                for (const k in saved.keys) this.keys[k] = saved.keys[k];
+                this.world.setBlock(wx, h + 1, z, 0);
+                this.world.setBlock(wx, h + 2, z, 0);
+                this.markEditDirty(wx, z);
+                this.testResults.substep = res;
+              }
+            }
+          }
+          if (this.testTicks === 260) {
+            try {
+            // WS3 strict: pixel-level color stability at 5/25/60 blocks. Build a
+            // GUARANTEED 60-block clear corridor (force a solid dirt floor, carve
+            // the air, cap it, 3x3 stone wall at the end) — relying on 62 blocks
+            // of naturally flat terrain would let this probe silently never fire.
+            // readPixels the wall face at three distances and compare means: the
+            // renderer has no fog/depth-dimming, so means must agree.
+            const px = Math.floor(this.player.pos[0]), pz = Math.floor(this.player.pos[2]);
+            for (let ox = -10; ox <= 10 && !this.testResults.dist; ox++) {
+              for (let oz = -10; oz <= 10; oz++) {
+                const x = Math.floor(px) + ox, z = Math.floor(pz) + oz;
+                const h = 24; // reference level (no floor needed — the probe
+                // sets player.pos directly and renders; no physics involved)
+                // clear air corridor: camera path + margin, z..z+62. Each column
+                // is cleared up to at least h+8 AND above its natural surface, so
+                // hills can't bury the sightline and every corridor column is
+                // open to the sky (skylight 15 plateau).
+                for (let dx = -2; dx <= 2; dx++)
+                  for (let dz = 0; dz <= 62; dz++) {
+                    const top = Math.max(this.world.surfaceY(x + dx, z + dz), h + 8);
+                    for (let y = h - 2; y <= top; y++) this.world.setBlock(x + dx, y, z + dz, 0);
+                  }
+                // skylight shaft above the wall (3x3, to world top): skylight is
+                // 15 in any open column and only dims under roofs, so this keeps
+                // the wall face skylit whether the corridor is open or a tunnel.
+                const wz = z + 60;
+                for (let dx = -1; dx <= 1; dx++)
+                  for (let dz = -1; dz <= 1; dz++)
+                    for (let y = h + 1; y < HMAX; y++) this.world.setBlock(x + dx, y, z + 60 + dz, 0);
+                // 3x3 stone wall at the far end (faces -z, into the corridor)
+                for (let dx = -1; dx <= 1; dx++)
+                  for (let y = h + 1; y <= h + 3; y++) this.world.setBlock(x + dx, y, wz, 3);
+                // dirty every chunk the corridor touches (x-2..x+2, z..z+62):
+                // markEditDirty only covers the 3x3 around one column, so mark
+                // the whole span or middle chunks keep pre-carve meshes.
+                for (let dx = -2; dx <= 2; dx++)
+                  for (let dz = 0; dz <= 62; dz += 8) this.markEditDirty(x + dx, z + dz);
+                // the carve touched many chunks: rebuild their meshes NOW (the
+                // main loop drains ≤4 dirty chunks per tick — a direct render()
+                // before that drain would draw the pre-carve world). Loop to
+                // emptiness: building one chunk can light-recompute a neighbor
+                // that was not dirty when the snapshot was taken.
+                while (this.world.dirty.size) {
+                  for (const k of [...this.world.dirty]) {
+                    const [cx, cz] = k.split(',').map(Number);
+                    this.buildMeshFor(cx, cz);
+                  }
+                }
+                this.viewRadius = 5; // corridor end is ~4 chunks out
+                this.ensureChunks();
+                const saved = { pos: [...this.player.pos], vel: [...this.player.vel], keys: { ...this.keys }, yaw: this.player.yaw, pitch: this.player.pitch, ents: this.entities };
+                for (const k in this.keys) this.keys[k] = false;
+                const gl = this.gl, c = this.canvas;
+                const cx = c.width >> 1, cy = c.height >> 1;
+                const buf = new Uint8Array(5 * 5 * 4);
+                const sample = () => {
+                  gl.readPixels(cx - 2, cy - 2, 5, 5, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+                  const acc = [0, 0, 0];
+                  for (let i = 0; i < 25; i++) { acc[0] += buf[i * 4]; acc[1] += buf[i * 4 + 1]; acc[2] += buf[i * 4 + 2]; }
+                  return [+(acc[0] / 25).toFixed(1), +(acc[1] / 25).toFixed(1), +(acc[2] / 25).toFixed(1)];
+                };
+                this.entities = []; // no mob may cross the sample ray
+                const means = {};
+                for (const D of [5, 25, 60]) {
+                  this.player.pos = [x + 0.5, h + 1, wz - D];
+                  this.player.vel = [0, 0, 0];
+                  this.player.yaw = Math.PI;            // face +z, toward the wall
+                  this.player.pitch = Math.asin(0.62 / D); // aim at wall center (y h+2)
+                  this.render(performance.now());
+                  means[D] = sample();
+                }
+                // WS3 strict: the target-highlight box must not occlude the aimed
+                // face (suspected: coplanar solid unit cube drawn over the face).
+                this.player.pos = [x + 0.5, h + 1, wz - 3];
+                  this.player.yaw = Math.PI;
+                  this.player.pitch = Math.asin(0.62 / 3);
+                  this.render(performance.now());
+                  const hl = sample();
+                // Cave/night regression (plan 003): same wall at night must be
+                // dimmer than midday but still readable (skylight floor ~0.12).
+                const savedDay = this.dayTime;
+                this.dayTime = 0.95; // full night
+                this.player.pos = [x + 0.5, h + 1, wz - 25];
+                this.player.pitch = Math.asin(0.62 / 25);
+                this.render(performance.now());
+                const night = sample();
+                this.dayTime = savedDay;
+                this.player.pos = saved.pos; this.player.vel = saved.vel;
+                this.player.yaw = saved.yaw; this.player.pitch = saved.pitch;
+                this.entities = saved.ents;
+                this.viewRadius = 3; // restore (the corridor needed 5)
+                this.testResults.dist = {
+                  d5: means[5], d25: means[25], d60: means[60],
+                  spread: Math.max(
+                    Math.abs(means[5][0] - means[25][0]), Math.abs(means[5][0] - means[60][0]), Math.abs(means[25][0] - means[60][0]),
+                    Math.abs(means[5][1] - means[25][1]), Math.abs(means[5][1] - means[60][1]), Math.abs(means[25][1] - means[60][1]),
+                    Math.abs(means[5][2] - means[25][2]), Math.abs(means[5][2] - means[60][2]), Math.abs(means[25][2] - means[60][2]),
+                  ),
+                  hl, night,
+                };
+              }
+            }
+            } catch (e) { this.testResults.distErr = String(e && e.message || e); }
           }
           if (this.testTicks === 60) this.testResults.sunA = JSON.stringify(this.sunDir().map(v => +v.toFixed(3)));
           if (this.testTicks === 240) this.testResults.sunB = JSON.stringify(this.sunDir().map(v => +v.toFixed(3)));
@@ -1901,41 +2250,43 @@ class Game {
 }
 
 // entity part tables: {ox,oy,oz center offsets; sx,sy,sz sizes; color rgb 0-1}
+// Y dims are vanilla-scaled so each mob's head-top matches its MC hitbox height
+// (cow 1.4, pig 0.9, zombie 1.975, creeper 1.7). Feet stay grounded.
 const C = (r, g, b) => [r, g, b];
 const COW_PARTS = [
-  { ox: 0, oy: 0.55, oz: 0, sx: 0.9, sy: 0.7, sz: 1.3, color: C(0.54, 0.35, 0.20) },
-  { ox: 0, oy: 0.62, oz: -0.45, sx: 0.7, sy: 0.45, sz: 0.5, color: C(0.96, 0.94, 0.90) },
-  { ox: 0, oy: 1.05, oz: 0.75, sx: 0.5, sy: 0.5, sz: 0.5, color: C(0.54, 0.35, 0.20) },
-  { ox: -0.28, oy: 0.18, oz: -0.4, sx: 0.16, sy: 0.4, sz: 0.16, color: C(0.35, 0.22, 0.14) },
-  { ox: 0.28, oy: 0.18, oz: -0.4, sx: 0.16, sy: 0.4, sz: 0.16, color: C(0.35, 0.22, 0.14) },
-  { ox: -0.28, oy: 0.18, oz: 0.4, sx: 0.16, sy: 0.4, sz: 0.16, color: C(0.35, 0.22, 0.14) },
-  { ox: 0.28, oy: 0.18, oz: 0.4, sx: 0.16, sy: 0.4, sz: 0.16, color: C(0.35, 0.22, 0.14) },
+  { ox: 0, oy: 0.592, oz: 0, sx: 0.9, sy: 0.754, sz: 1.3, color: C(0.54, 0.35, 0.20) },
+  { ox: 0, oy: 0.668, oz: -0.45, sx: 0.7, sy: 0.485, sz: 0.5, color: C(0.96, 0.94, 0.90) },
+  { ox: 0, oy: 1.131, oz: 0.75, sx: 0.5, sy: 0.538, sz: 0.5, color: C(0.54, 0.35, 0.20) },
+  { ox: -0.28, oy: 0.194, oz: -0.4, sx: 0.16, sy: 0.431, sz: 0.16, color: C(0.35, 0.22, 0.14) },
+  { ox: 0.28, oy: 0.194, oz: -0.4, sx: 0.16, sy: 0.431, sz: 0.16, color: C(0.35, 0.22, 0.14) },
+  { ox: -0.28, oy: 0.194, oz: 0.4, sx: 0.16, sy: 0.431, sz: 0.16, color: C(0.35, 0.22, 0.14) },
+  { ox: 0.28, oy: 0.194, oz: 0.4, sx: 0.16, sy: 0.431, sz: 0.16, color: C(0.35, 0.22, 0.14) },
 ];
 const PIG_PARTS = [
-  { ox: 0, oy: 0.5, oz: 0, sx: 0.7, sy: 0.55, sz: 1.1, color: C(0.94, 0.63, 0.69) },
-  { ox: 0, oy: 0.85, oz: 0.6, sx: 0.45, sy: 0.4, sz: 0.4, color: C(0.94, 0.63, 0.69) },
-  { ox: 0, oy: 0.8, oz: 0.85, sx: 0.2, sy: 0.15, sz: 0.15, color: C(0.82, 0.5, 0.56) },
-  { ox: -0.2, oy: 0.16, oz: -0.3, sx: 0.14, sy: 0.35, sz: 0.14, color: C(0.82, 0.5, 0.56) },
-  { ox: 0.2, oy: 0.16, oz: -0.3, sx: 0.14, sy: 0.35, sz: 0.14, color: C(0.82, 0.5, 0.56) },
-  { ox: -0.2, oy: 0.16, oz: 0.3, sx: 0.14, sy: 0.35, sz: 0.14, color: C(0.82, 0.5, 0.56) },
-  { ox: 0.2, oy: 0.16, oz: 0.3, sx: 0.14, sy: 0.35, sz: 0.14, color: C(0.82, 0.5, 0.56) },
+  { ox: 0, oy: 0.429, oz: 0, sx: 0.7, sy: 0.471, sz: 1.1, color: C(0.94, 0.63, 0.69) },
+  { ox: 0, oy: 0.729, oz: 0.6, sx: 0.45, sy: 0.343, sz: 0.4, color: C(0.94, 0.63, 0.69) },
+  { ox: 0, oy: 0.686, oz: 0.85, sx: 0.2, sy: 0.129, sz: 0.15, color: C(0.82, 0.5, 0.56) },
+  { ox: -0.2, oy: 0.137, oz: -0.3, sx: 0.14, sy: 0.300, sz: 0.14, color: C(0.82, 0.5, 0.56) },
+  { ox: 0.2, oy: 0.137, oz: -0.3, sx: 0.14, sy: 0.300, sz: 0.14, color: C(0.82, 0.5, 0.56) },
+  { ox: -0.2, oy: 0.137, oz: 0.3, sx: 0.14, sy: 0.300, sz: 0.14, color: C(0.82, 0.5, 0.56) },
+  { ox: 0.2, oy: 0.137, oz: 0.3, sx: 0.14, sy: 0.300, sz: 0.14, color: C(0.82, 0.5, 0.56) },
 ];
 const ZOMBIE_PARTS = [
-  { ox: 0, oy: 0.8, oz: 0, sx: 0.5, sy: 0.7, sz: 0.35, color: C(0.16, 0.54, 0.29) },
-  { ox: 0, oy: 1.3, oz: 0, sx: 0.4, sy: 0.4, sz: 0.4, color: C(0.23, 0.63, 0.35) },
-  { ox: 0, oy: 1.35, oz: 0.2, sx: 0.3, sy: 0.08, sz: 0.05, color: C(0.1, 0.35, 0.16) },
-  { ox: 0, oy: 0.45, oz: 0, sx: 0.22, sy: 0.6, sz: 0.3, color: C(0.1, 0.35, 0.16) },
-  { ox: -0.35, oy: 1.05, oz: 0.2, sx: 0.15, sy: 0.5, sz: 0.2, color: C(0.23, 0.63, 0.35) },
-  { ox: 0.35, oy: 1.05, oz: 0.2, sx: 0.15, sy: 0.5, sz: 0.2, color: C(0.23, 0.63, 0.35) },
+  { ox: 0, oy: 0.969, oz: 0, sx: 0.5, sy: 1.024, sz: 0.35, color: C(0.16, 0.54, 0.29) },
+  { ox: 0, oy: 1.693, oz: 0, sx: 0.4, sy: 0.585, sz: 0.4, color: C(0.23, 0.63, 0.35) },
+  { ox: 0, oy: 1.765, oz: 0.2, sx: 0.3, sy: 0.117, sz: 0.05, color: C(0.1, 0.35, 0.16) },
+  { ox: 0, oy: 0.458, oz: 0, sx: 0.22, sy: 0.878, sz: 0.3, color: C(0.1, 0.35, 0.16) },
+  { ox: -0.35, oy: 1.336, oz: 0.2, sx: 0.15, sy: 0.731, sz: 0.2, color: C(0.23, 0.63, 0.35) },
+  { ox: 0.35, oy: 1.336, oz: 0.2, sx: 0.15, sy: 0.731, sz: 0.2, color: C(0.23, 0.63, 0.35) },
 ];
 const CREEPER_PARTS = [
-  { ox: 0, oy: 0.55, oz: 0, sx: 0.4, sy: 0.9, sz: 0.4, color: C(0.23, 0.63, 0.16) },
-  { ox: 0, oy: 1.15, oz: 0, sx: 0.35, sy: 0.35, sz: 0.35, color: C(0.23, 0.63, 0.16) },
-  { ox: 0, oy: 1.2, oz: 0.18, sx: 0.25, sy: 0.15, sz: 0.05, color: C(0.07, 0.07, 0.07) },
-  { ox: -0.2, oy: 0.15, oz: -0.15, sx: 0.15, sy: 0.35, sz: 0.15, color: C(0.23, 0.63, 0.16) },
-  { ox: 0.2, oy: 0.15, oz: -0.15, sx: 0.15, sy: 0.35, sz: 0.15, color: C(0.23, 0.63, 0.16) },
-  { ox: -0.2, oy: 0.15, oz: 0.15, sx: 0.15, sy: 0.35, sz: 0.15, color: C(0.23, 0.63, 0.16) },
-  { ox: 0.2, oy: 0.15, oz: 0.15, sx: 0.15, sy: 0.35, sz: 0.15, color: C(0.23, 0.63, 0.16) },
+  { ox: 0, oy: 0.706, oz: 0, sx: 0.4, sy: 1.155, sz: 0.4, color: C(0.23, 0.63, 0.16) },
+  { ox: 0, oy: 1.475, oz: 0, sx: 0.35, sy: 0.449, sz: 0.35, color: C(0.23, 0.63, 0.16) },
+  { ox: 0, oy: 1.540, oz: 0.18, sx: 0.25, sy: 0.192, sz: 0.05, color: C(0.07, 0.07, 0.07) },
+  { ox: -0.2, oy: 0.192, oz: -0.15, sx: 0.15, sy: 0.449, sz: 0.15, color: C(0.23, 0.63, 0.16) },
+  { ox: 0.2, oy: 0.192, oz: -0.15, sx: 0.15, sy: 0.449, sz: 0.15, color: C(0.23, 0.63, 0.16) },
+  { ox: -0.2, oy: 0.192, oz: 0.15, sx: 0.15, sy: 0.449, sz: 0.15, color: C(0.23, 0.63, 0.16) },
+  { ox: 0.2, oy: 0.192, oz: 0.15, sx: 0.15, sy: 0.449, sz: 0.15, color: C(0.23, 0.63, 0.16) },
 ];
 
 </script>
@@ -1953,7 +2304,13 @@ const game = new Game(canvas, {
   probe: probeMode,
   onError: (msg) => { $('start-err').textContent = msg; },
   onPause: (p) => { $('paused').classList.toggle('hidden', !p); },
-  onInv: (open) => { $('inv').classList.toggle('open', open); },
+  onInv: (open) => {
+    const el = $('inv'); el.classList.toggle('open', open);
+    // populate palette + slots every time the panel opens (was the empty-panel bug:
+    // buildInv was only called from inside its own slot-click handler). Hoisted, so
+    // safe to reference here. Also feeds the ?test harness.
+    if (open) { buildInv(); game.testResults && (game.testResults.invPalette = $('inv-palette').children.length); }
+  },
   onFrame: (g) => { if (testMode) renderTest(g); },
 });
 window.__game = game; // diagnostics handle
@@ -1978,8 +2335,9 @@ $('inv').addEventListener('click', (e) => {
   if (e.target.id === 'inv') game.setInv(false); // tap backdrop to close
 });
 
-// hotbar (5 creative slots, mirrors game.inv)
-const SWATCH = { 1: '#5fbf3f', 2: '#8a5a34', 3: '#8d8d92', 4: '#6b4a2b', 5: '#3e8f2e', 6: '#b08a4f', 7: '#ffd54a', 9: '#e7d8a8', 10: '#3a3a3a', 11: '#d8af93', 12: '#c46e3c', 13: '#fcee4b', 14: '#53ecee' };
+// hotbar (5 creative slots, mirrors game.inv) — swatch hexes match the Route A
+// atlas base colors (2026-09-07) so the UI reads true-color like the world.
+const SWATCH = { 1: '#6fae4c', 2: '#866043', 3: '#7d7d7d', 4: '#6e5230', 5: '#5a8f39', 6: '#b58e58', 7: '#ffd54a', 9: '#dbcf8f', 10: '#3a3a3e', 11: '#d8af93', 12: '#c46e3c', 13: '#fcee4b', 14: '#53ecee' };
 function buildHotbar() {
   const hb = $('hotbar');
   hb.innerHTML = '';
@@ -2091,7 +2449,22 @@ function renderTest(g) {
     ['block broken', r.lastBroke !== undefined],
     ['block placed', r.lastPlaced !== undefined],
     ['inventory swap (creative)', r.invSwapped === true],
+    ['WS1 player height = 1.8', r.playerH === 1.8],
+    ['WS1 eye height = 1.62', r.playerEye === 1.62],
+    ['WS1 zombie top ≈ 1.975', r.entTop && Math.abs(r.entTop.zombie - 1.975) < 0.03],
+    ['WS1 creeper top ≈ 1.7', r.entTop && Math.abs(r.entTop.creeper - 1.7) < 0.03],
+    ['WS2 pitch up = look up', r.pitchUp > 0],
+    ['WS2 pitch down = look down', r.pitchDown < 0],
+    ['WS2 move+jump+place at once', r.sim && r.sim.moved && r.sim.jumped && r.sim.placed],
+    ['WS2 inventory opens populated', r.invPalette >= 13],
+    ['WS2 lock re-acquires after drop', r.relock && r.relock.reAcquired && r.relock.notSpam],
+    ['WS1 head fits 2.0 corridor (clearance 0.2)', r.tunnel && Math.abs(r.tunnel.headTopY - (r.tunnel.ceiling - 0.2)) < 0.02],
+    ['WS1 entities grounded (feet ≈ 0)', r.entFeet && Object.values(r.entFeet).every(v => Math.abs(v) <= 0.05)],
     ['sun moves with clock', r.sunA && r.sunB && r.sunA !== r.sunB],
+    ['WS3 wall color stable 5/25/60', r.dist && r.dist.spread < 6 && r.dist.d5[0] > 20],
+    ['WS3 highlight leaves aimed face lit', r.dist && r.dist.hl && r.dist.hl[0] > 20],
+    ['WS3 night dimmer but readable', r.dist && r.dist.night && r.dist.night[0] > 8 && r.dist.night[0] < 0.6 * r.dist.d5[0]],
+    ['WS3 dist probe ran', r.dist && !r.distErr],
     ['shot fired', g.testTicks > 200],
     ['day/night clock', g.testTicks >= 60],
     ['fps > 15', g.fps > 15 || g.testTicks < 120],
@@ -2099,7 +2472,13 @@ function renderTest(g) {
   let html = rows.map(([n, ok]) => `<div class="${ok ? 'pass' : 'fail'}">${ok ? 'PASS' : 'FAIL'} · ${n}</div>`).join('');
   if (r.lastBroke) html += `<div>broke: ${r.lastBroke} · placed: ${r.lastPlaced || '-'} · shot: ${r.lastShot || r.lastKilled || '-'}</div>`;
   if (r.spawn) html += `<div>spawn: ${r.spawn}</div>`;
+  if (r.sim) html += `<div>sim: moved=${r.sim.moved} jumped=${r.sim.jumped} placed=${r.sim.placed} dY=${(r.sim.maxY-r.sim.baseY).toFixed(2)}</div>`;
+  if (r.entFeet) html += `<div>feet: cow=${r.entFeet.cow} pig=${r.entFeet.pig} zombie=${r.entFeet.zombie} creeper=${r.entFeet.creeper}</div>`;
+  if (r.tunnel) html += `<div>tunnel: headTopY=${r.tunnel.headTopY} clearance=${(r.tunnel.ceiling - r.tunnel.headTopY).toFixed(3)} ceiling=${r.tunnel.ceiling} @ ${r.tunnel.x},${r.tunnel.z}</div>`;
+  if (r.relock) html += `<div>relock: reAcquired=${r.relock.reAcquired} notSpam=${r.relock.notSpam}</div>`;
   html += `<div>tick ${g.testTicks} · fps ${g.fps} · tri ${g.stats.tri} · chunks ${g.stats.chunks} · ents ${g.stats.entities} · health ${g.health}</div>`;
+  if (r.distErr) html += `<div class="fail">distErr: ${r.distErr}</div>`;
+  if (r.dist) html += `<div>dist: d5=[${r.dist.d5}] d25=[${r.dist.d25}] d60=[${r.dist.d60}] spread=${r.dist.spread} hl=[${r.dist.hl}] night=[${r.dist.night}]</div>`;
   if (r.done) html += `<div class="pass">TEST COMPLETE</div>`;
   lines.innerHTML = html;
   if (r.done) {
