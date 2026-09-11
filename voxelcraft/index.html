@@ -279,6 +279,35 @@ function makeProgram(gl, vsSrc, fsSrc) {
   };
 }
 
+// ===== src/vanilla-atlas.js =====
+// GENERATED — do not edit by hand. Regenerate with scripts/fetch-vanilla.py.
+// Source: Mojang Minecraft 1.21.4 assets via github.com/misode/mcmeta (tag 1.21.4-assets).
+// Keys = mcmeta texture filenames. Each value = base64 of raw RGBA, 16x16 = 256 px * 4 bytes.
+//
+// grass_block_top / oak_leaves / water are grayscale LUMINANCE MASKS in the jar;
+// Minecraft tints them at runtime (colormap/grass.png, colormap/foliage.png, water color).
+// We bake the vanilla Plains-biome tint here so the atlas renders colored out of the box:
+//   final = tint * (L/128), alpha preserved. Other tiles are stored already-colored.
+const VANILLA_TILES = {
+  grass_block_top: "Yp0n/4HPM/9hnCf/WI4j/1iOI/9elyX/VIYh/1yUJf9opyn/Y58n/1uSJP9ZjyP/WpEk/26xLP9Kdx3/XZUl/2KeJ/9clCX/aqoq/2SgKP9loij/VYgi/2WiKP9WiiL/VIYh/3CzLP9usCz/YZwn/4HPM/9clCX/WY8j/1yTJP9srSv/XZUl/1OEIf9XjCP/WpEk/1qQJP9fmSb/X5km/2KdJ/9pqCr/b7Is/3K3Lf9ZjyP/T34f/1WIIv94wTD/Tn0f/1iNI/9bkiT/ZKAo/2CaJv9loij/U4Qh/2CbJv9UhiH/Vosi/12VJf9koCj/Xpcl/1yTJP9usSz/U4Qh/2usK/9WiyL/crct/1aLIv9yti3/c7gu/1qQJP9yti3/e8Ux/018H/9ViCL/brEs/3G1Lf9ThSH/WpAk/12VJf9loij/ZKEo/09/H/9usCz/VYki/2OfJ/9inif/ZqQp/1mPI/9inif/WpAk/1aLIv9Pfx//WpAk/16WJf9inSf/U4Uh/2elKf9tryv/X5km/2CbJv9WiyL/W5Ik/1SGIf9XjCP/WY8j/3jAMP9yti3/YJom/26xLP9koCj/Xpcl/16XJf9ZjyP/aKYp/1yTJP9fmSb/UoMg/2yuK/9XjCP/ZKAo/3K3Lf9ZjyP/VYki/16XJf9qqir/VIYh/3CzLP9usSz/ZqQp/3jBMP9wtC3/crYt/1WJIv9yty3/Z6Up/3a+L/9wtC3/Vooi/2CbJv9YjSP/YZwn/2inKf9ThSH/ZKAo/1aKIv95wjD/XZUl/1yUJf9koSj/cLQt/1WIIv9ZjyP/YJom/2CbJv9wsyz/XpYl/3a+L/9elyX/VYki/2akKf9opyn/ZKAo/22vK/9WiiL/eMEw/16WJf9hnCf/f8wz/1CAIP9usSz/Vosi/16XJf9akCT/ZKAo/16XJf9XjCP/crct/1iOI/9srSv/ZKAo/1eMI/9gmyb/WpEk/2SgKP9gmyb/XJQl/1GCIP92vi//VIYh/1OEIf9bkiT/e8Ux/2SgKP9ViSL/W5Ik/2WiKP9gmib/WI0j/1GBIP9bkiT/YJom/1uSJP9ThCH/aagq/22vK/9QgCD/ZKAo/1WJIv9vsiz/Tn0f/2CbJv9ThCH/ZaIo/1WJIv+BzzP/aqsq/2GcJ/9vsiz/ZqQp/2qqKv9akCT/b7Is/3O4Lv9srSv/aqsq/3/MM/9RgiD/dr4v/3G1Lf9inSf/YZwn/1OFIf9inif/Yp4n/1mPI/9wsyz/aKYp/1yTJP9QgCD/WI0j/2OfJ/9akCT/WpEk/2yuK/9koSj/Yp0n/2GcJ/9eliX/fsoy/1KDIP9wsyz/V4wj/1+ZJv9akCT/aKcp/w==",
+  grass_block_side: "dLRK/3a2TP9zs0n/ZqY8/2amPP9vr0X/X581/2ysQv9+vlT/drZM/2qqQP9npz3/aak//2GhN/9QkCb/ba1D/3W1S/9srEL/irla/4GwUf+DslP/WT0p/2ioPv9iojj/X581/5PCY/+Qv2D/c7NJ/2GhN/9srEL/Z6c9/2urQf+NvF3/WT0p/5zLbP9kpDr/aak//1k9Kf9wsEb/WT0p/3S0Sv9/v1X/ksFi/5fGZ/9ZPSn/V5ct/2CgNv9ZPSn/WT0p/2xsbP9ZPSn/WT0p/3GxR/9ZPSn/WT0p/1k9Kf9fnzX/WT0p/22tQ/9ZPSn/eVU6/1k9Kf9ZPSn/eVU6/5ZsSv95VTr/lmxK/7mFXP9ZPSn/lmxK/3lVOv95VTr/WT0p/1k9Kf9ZPSn/bGxs/3lVOv+WbEr/WT0p/3lVOv95VTr/WT0p/5ZsSv+WbEr/eVU6/5ZsSv9ZPSn/WT0p/1k9Kf95VTr/eVU6/1k9Kf95VTr/eVU6/3lVOv+5hVz/uYVc/3lVOv95VTr/eVU6/4eHh/95VTr/eVU6/7mFXP+5hVz/eVU6/7mFXP+5hVz/eVU6/5ZsSv95VTr/lmxK/3lVOv95VTr/uYVc/7mFXP+WbEr/lmxK/3lVOv95VTr/lmxK/1k9Kf+WbEr/lmxK/3lVOv95VTr/lmxK/5ZsSv+WbEr/eVU6/3lVOv+WbEr/eVU6/5ZsSv95VTr/WT0p/3lVOv+WbEr/lmxK/3lVOv95VTr/eVU6/1k9Kf95VTr/eVU6/5ZsSv9ZPSn/eVU6/3lVOv9ZPSn/WT0p/3lVOv95VTr/eVU6/3lVOv95VTr/uYVc/7mFXP95VTr/lmxK/3lVOv+WbEr/eVU6/7mFXP+5hVz/eVU6/7mFXP+WbEr/WT0p/7mFXP+5hVz/WT0p/5ZsSv+WbEr/h4eH/3lVOv+WbEr/eVU6/3lVOv+WbEr/lmxK/7mFXP95VTr/lmxK/2xsbP+WbEr/lmxK/3lVOv9ZPSn/lmxK/3lVOv9ZPSn/eVU6/1k9Kf+WbEr/eVU6/5ZsSv+WbEr/uYVc/3lVOv95VTr/eVU6/3lVOv95VTr/eVU6/3lVOv+5hVz/uYVc/3lVOv+WbEr/eVU6/3lVOv90WET/eVU6/5ZsSv+WbEr/eVU6/1k9Kf+5hVz/WT0p/3lVOv+5hVz/lmxK/5ZsSv+WbEr/eVU6/1k9Kf+5hVz/eVU6/1k9Kf95VTr/WT0p/7mFXP+5hVz/eVU6/5ZsSv95VTr/eVU6/5ZsSv+WbEr/lmxK/3lVOv+5hVz/lmxK/5ZsSv95VTr/h4eH/3lVOv+WbEr/lmxK/3lVOv95VTr/lmxK/5ZsSv95VTr/WT0p/w==",
+  dirt: "uYVc/5ZsSv+WbEr/eVU6/3lVOv+5hVz/lmxK/5ZsSv95VTr/eVU6/1k9Kf95VTr/eVU6/7mFXP95VTr/uYVc/3lVOv+WbEr/WT0p/3lVOv95VTr/lmxK/4eHh/9ZPSn/eVU6/7mFXP+WbEr/eVU6/7mFXP+WbEr/WT0p/1k9Kf+5hVz/eVU6/3lVOv9ZPSn/uYVc/3lVOv95VTr/eVU6/7mFXP95VTr/eVU6/3lVOv9ZPSn/WT0p/7mFXP95VTr/lmxK/2xsbP+5hVz/eVU6/5ZsSv9ZPSn/eVU6/7mFXP+WbEr/lmxK/3lVOv+WbEr/eVU6/7mFXP+WbEr/eVU6/5ZsSv95VTr/lmxK/7mFXP9ZPSn/lmxK/3lVOv95VTr/lmxK/1k9Kf95VTr/bGxs/3lVOv+WbEr/WT0p/3lVOv95VTr/WT0p/5ZsSv+WbEr/eVU6/5ZsSv9ZPSn/WT0p/1k9Kf95VTr/eVU6/1k9Kf95VTr/eVU6/3lVOv+5hVz/uYVc/3lVOv95VTr/eVU6/4eHh/95VTr/eVU6/7mFXP+5hVz/eVU6/7mFXP+5hVz/eVU6/5ZsSv95VTr/lmxK/3lVOv95VTr/uYVc/7mFXP+WbEr/lmxK/3lVOv95VTr/lmxK/1k9Kf+WbEr/lmxK/3lVOv95VTr/lmxK/5ZsSv+WbEr/eVU6/3lVOv+WbEr/eVU6/5ZsSv95VTr/WT0p/3lVOv+WbEr/lmxK/3lVOv95VTr/eVU6/1k9Kf95VTr/eVU6/5ZsSv9ZPSn/eVU6/3lVOv9ZPSn/WT0p/3lVOv95VTr/eVU6/3lVOv95VTr/uYVc/7mFXP95VTr/lmxK/3lVOv+WbEr/eVU6/7mFXP+5hVz/eVU6/7mFXP+WbEr/WT0p/7mFXP+5hVz/WT0p/5ZsSv+WbEr/h4eH/3lVOv+WbEr/eVU6/3lVOv+WbEr/lmxK/7mFXP95VTr/lmxK/2xsbP+WbEr/lmxK/3lVOv9ZPSn/lmxK/3lVOv9ZPSn/eVU6/1k9Kf+WbEr/eVU6/5ZsSv+WbEr/uYVc/3lVOv95VTr/eVU6/3lVOv95VTr/eVU6/3lVOv+5hVz/uYVc/3lVOv+WbEr/eVU6/3lVOv90WET/eVU6/5ZsSv+WbEr/eVU6/1k9Kf+5hVz/WT0p/3lVOv+5hVz/lmxK/5ZsSv+WbEr/eVU6/1k9Kf+5hVz/eVU6/1k9Kf95VTr/WT0p/7mFXP+5hVz/eVU6/5ZsSv95VTr/eVU6/5ZsSv+WbEr/lmxK/3lVOv+5hVz/lmxK/5ZsSv95VTr/h4eH/3lVOv+WbEr/lmxK/3lVOv95VTr/lmxK/5ZsSv95VTr/WT0p/w==",
+  stone: "j4+P/4+Pj/+Pj4//j4+P/39/f/90dHT/dHR0/39/f/90dHT/aGho/3R0dP90dHT/f39//39/f/9/f3//f39//39/f/9/f3//dHR0/39/f/90dHT/f39//39/f/9/f3//f39//39/f/9/f3//aGho/2hoaP90dHT/f39//3R0dP9/f3//dHR0/2hoaP9oaGj/dHR0/3R0dP90dHT/aGho/3R0dP90dHT/dHR0/39/f/9/f3//f39//39/f/9/f3//f39//39/f/+Pj4//j4+P/39/f/+Pj4//f39//39/f/+Pj4//j4+P/39/f/9/f3//f39//3R0dP90dHT/dHR0/3R0dP9/f3//f39//3R0dP90dHT/dHR0/39/f/90dHT/f39//4+Pj/+Pj4//j4+P/4+Pj/90dHT/f39//39/f/9/f3//j4+P/39/f/9/f3//f39//39/f/9/f3//f39//39/f/90dHT/dHR0/2hoaP90dHT/aGho/3R0dP+Pj4//dHR0/39/f/9/f3//j4+P/4+Pj/+Pj4//dHR0/4+Pj/+Pj4//dHR0/3R0dP90dHT/f39//39/f/9/f3//f39//3R0dP90dHT/aGho/2hoaP90dHT/aGho/3R0dP90dHT/f39//39/f/90dHT/dHR0/3R0dP9/f3//f39//39/f/+Pj4//j4+P/4+Pj/9/f3//j4+P/39/f/9/f3//j4+P/4+Pj/+Pj4//f39//39/f/9/f3//f39//39/f/90dHT/f39//39/f/+Pj4//f39//39/f/9/f3//j4+P/4+Pj/+Pj4//f39//39/f/+Pj4//j4+P/4+Pj/+Pj4//f39//2hoaP9/f3//dHR0/39/f/90dHT/dHR0/2hoaP9oaGj/dHR0/39/f/90dHT/f39//39/f/90dHT/dHR0/3R0dP9/f3//f39//39/f/9/f3//f39//4+Pj/+Pj4//f39//39/f/9/f3//f39//39/f/+Pj4//j4+P/39/f/+Pj4//f39//3R0dP90dHT/dHR0/39/f/+Pj4//f39//3R0dP90dHT/f39//39/f/9oaGj/aGho/3R0dP9oaGj/dHR0/4+Pj/+Pj4//f39//3R0dP90dHT/f39//39/f/90dHT/dHR0/3R0dP9/f3//f39//3R0dP90dHT/dHR0/4+Pj/9/f3//dHR0/3R0dP9/f3//f39//39/f/9/f3//f39//39/f/9/f3//f39//39/f/+Pj4//j4+P/4+Pj/+Pj4//f39//39/f/9/f3//f39//39/f/9/f3//dHR0/3R0dP9/f3//j4+P/4+Pj/9/f3//f39//3R0dP9/f3//f39//w==",
+  oak_log_side: "dFo2/0w9Jv+RcUL/dFo2/3RaNv84Kxj/kXFC/3RaNv90Wjb/OCsY/3RaNv+RcUL/TD0m/5FxQv90Wjb/X0or/3RaNv9MPSb/mHhJ/19KK/90Wjb/OCsY/5h4Sf9fSiv/dFo2/zgrGP90Wjb/kXFC/0w9Jv90Wjb/dFo2/19KK/90Wjb/OCsY/19KK/9fSiv/dFo2/zgrGP+YeEn/X0or/3RaNv9MPSb/dFo2/0w9Jv9MPSb/dFo2/3RaNv9fSiv/kXFC/zgrGP90Wjb/X0or/3RaNv9MPSb/dFo2/19KK/90Wjb/X0or/3RaNv84Kxj/TD0m/3RaNv+RcUL/X0or/5FxQv9MPSb/dFo2/19KK/90Wjb/OCsY/3RaNv9fSiv/mHhJ/19KK/90Wjb/X0or/3RaNv9MPSb/kXFC/3RaNv+RcUL/dFo2/0w9Jv90Wjb/kXFC/0w9Jv90Wjb/TD0m/5h4Sf9fSiv/kXFC/0w9Jv90Wjb/TD0m/5FxQv90Wjb/X0or/3RaNv9MPSb/dFo2/5FxQv9fSiv/X0or/3RaNv+RcUL/dFo2/5FxQv90Wjb/dFo2/0w9Jv+RcUL/dFo2/19KK/90Wjb/OCsY/3RaNv+RcUL/dFo2/19KK/+RcUL/dFo2/3RaNv+RcUL/X0or/3RaNv9fSiv/kXFC/3RaNv90Wjb/TD0m/zgrGP+YeEn/dFo2/3RaNv9fSiv/kXFC/3RaNv9fSiv/kXFC/19KK/+RcUL/X0or/5FxQv90Wjb/dFo2/3RaNv9MPSb/mHhJ/3RaNv90Wjb/X0or/3RaNv90Wjb/X0or/5FxQv9MPSb/kXFC/3RaNv84Kxj/dFo2/3RaNv90Wjb/dFo2/5FxQv90Wjb/X0or/3RaNv84Kxj/dFo2/19KK/90Wjb/TD0m/5FxQv90Wjb/OCsY/3RaNv90Wjb/TD0m/3RaNv+RcUL/dFo2/19KK/90Wjb/OCsY/5h4Sf90Wjb/dFo2/zgrGP+YeEn/dFo2/0w9Jv90Wjb/mHhJ/0w9Jv90Wjb/dFo2/5FxQv9fSiv/kXFC/zgrGP+YeEn/X0or/3RaNv84Kxj/dFo2/3RaNv9fSiv/dFo2/5h4Sf90Wjb/TD0m/3RaNv+RcUL/dFo2/3RaNv9MPSb/kXFC/19KK/90Wjb/TD0m/3RaNv90Wjb/dFo2/3RaNv+RcUL/dFo2/0w9Jv+RcUL/dFo2/3RaNv+RcUL/OCsY/3RaNv9MPSb/dFo2/0w9Jv9MPSb/kXFC/3RaNv90Wjb/kXFC/3RaNv9MPSb/kXFC/0w9Jv90Wjb/kXFC/0w9Jv90Wjb/TD0m/3RaNv90Wjb/TD0m/5FxQv90Wjb/X0or/w==",
+  oak_log_top: "X0or/0w9Jv9fSiv/dFo2/19KK/9MPSb/X0or/19KK/90Wjb/TD0m/19KK/9fSiv/TD0m/19KK/9fSiv/X0or/0w9Jv+4lF//uJRf/7iUX/+4lF//r49V/7iUX/+vj1X/wp1i/6+PVf+vj1X/uJRf/7iUX/+4lF//uJRf/0w9Jv9fSiv/uJRf/35iN/9+Yjf/lnRB/5Z0Qf+fhE3/lnRB/5+ETf+fhE3/n4RN/5+ETf+WdEH/lnRB/8KdYv9fSiv/X0or/7iUX/9+Yjf/wp1i/8KdYv+4lF//uJRf/7iUX/+4lF//r49V/7iUX/+4lF//uJRf/5Z0Qf+4lF//X0or/19KK/+vj1X/lnRB/7iUX/+vj1X/r49V/6+PVf+vj1X/r49V/6+PVf+vj1X/r49V/7iUX/+fhE3/r49V/19KK/9MPSb/uJRf/5+ETf+4lF//r49V/5Z0Qf+WdEH/n4RN/5+ETf+WdEH/lnRB/6+PVf+4lF//lnRB/6+PVf9MPSb/X0or/6+PVf+WdEH/r49V/6+PVf9+Yjf/r49V/6+PVf+vj1X/r49V/5Z0Qf+vj1X/r49V/5Z0Qf+4lF//X0or/19KK/+vj1X/n4RN/7iUX/+vj1X/lnRB/6+PVf+fhE3/n4RN/6+PVf+fhE3/r49V/7iUX/+fhE3/r49V/19KK/9fSiv/r49V/5+ETf+4lF//r49V/5Z0Qf+vj1X/n4RN/5Z0Qf+vj1X/lnRB/6+PVf+4lF//lnRB/6+PVf9fSiv/TD0m/6+PVf+fhE3/uJRf/6+PVf+WdEH/r49V/6+PVf+vj1X/r49V/5+ETf+vj1X/r49V/5Z0Qf+vj1X/TD0m/19KK/+vj1X/lnRB/7iUX/+vj1X/lnRB/5Z0Qf9+Yjf/lnRB/5+ETf+fhE3/r49V/7iUX/+fhE3/r49V/19KK/9fSiv/r49V/5+ETf+4lF//r49V/6+PVf+vj1X/r49V/6+PVf+vj1X/r49V/6+PVf+4lF//lnRB/6+PVf9fSiv/TD0m/7iUX/+fhE3/uJRf/7iUX/+vj1X/uJRf/7iUX/+4lF//uJRf/7iUX//CnWL/uJRf/5Z0Qf+vj1X/TD0m/19KK/+4lF//n4RN/5Z0Qf+fhE3/lnRB/5Z0Qf+WdEH/lnRB/5Z0Qf+WdEH/lnRB/5Z0Qf+WdEH/uJRf/19KK/9fSiv/uJRf/7iUX/+4lF//r49V/6+PVf+4lF//r49V/6+PVf/CnWL/r49V/6+PVf+4lF//uJRf/7iUX/9fSiv/X0or/0w9Jv9fSiv/X0or/19KK/9MPSb/X0or/19KK/90Wjb/TD0m/19KK/9fSiv/TD0m/3RaNv9fSiv/X0or/w==",
+  oak_planks: "uJRf/6+PVf+4lF//wp1i/8KdYv/CnWL/wp1i/8KdYv+4lF//wp1i/8KdYv/CnWL/wp1i/8KdYv+4lF//lnRB/7iUX/+4lF//r49V/6+PVf+WdEH/n4RN/6+PVf+4lF//uJRf/7iUX/+vj1X/r49V/7iUX/+4lF//n4RN/5+ETf+vj1X/uJRf/7iUX/+4lF//r49V/7iUX/+vj1X/n4RN/5+ETf+fhE3/n4RN/6+PVf+vj1X/uJRf/7iUX/+WdEH/lnRB/35iN/9+Yjf/lnRB/5Z0Qf9+Yjf/Z1As/2dQLP9+Yjf/fmI3/2dQLP9+Yjf/Z1As/2dQLP9+Yjf/Z1As/7iUX//CnWL/n4RN/8KdYv/CnWL/wp1i/8KdYv+fhE3/wp1i/8KdYv/CnWL/uJRf/6+PVf+vj1X/n4RN/7iUX/+vj1X/uJRf/7iUX/+vj1X/n4RN/6+PVf+fhE3/lnRB/5+ETf+vj1X/r49V/7iUX/+4lF//uJRf/7iUX/+vj1X/n4RN/5+ETf+vj1X/uJRf/6+PVf+vj1X/r49V/5Z0Qf+4lF//uJRf/7iUX/+vj1X/r49V/5+ETf+fhE3/n4RN/2dQLP9nUCz/fmI3/35iN/+WdEH/fmI3/2dQLP9nUCz/Z1As/2dQLP9+Yjf/fmI3/35iN/+WdEH/fmI3/2dQLP+4lF//wp1i/8KdYv+4lF//r49V/6+PVf/CnWL/wp1i/8KdYv/CnWL/wp1i/8KdYv/CnWL/wp1i/7iUX/+fhE3/uJRf/6+PVf+4lF//uJRf/7iUX/+4lF//r49V/5+ETf+fhE3/n4RN/6+PVf+fhE3/r49V/5+ETf+fhE3/lnRB/8KdYv+4lF//r49V/6+PVf+fhE3/n4RN/5+ETf+fhE3/r49V/6+PVf+vj1X/r49V/5+ETf+fhE3/uJRf/5+ETf9nUCz/Z1As/35iN/+WdEH/lnRB/35iN/9nUCz/Z1As/2dQLP9+Yjf/lnRB/35iN/9+Yjf/Z1As/2dQLP9nUCz/wp1i/5+ETf+4lF//wp1i/8KdYv+4lF//uJRf/5+ETf/CnWL/wp1i/8KdYv+fhE3/wp1i/7iUX//CnWL/wp1i/6+PVf+vj1X/uJRf/7iUX/+fhE3/n4RN/6+PVf+fhE3/n4RN/7iUX/+4lF//r49V/7iUX/+vj1X/r49V/6+PVf+vj1X/n4RN/5+ETf+vj1X/uJRf/6+PVf+fhE3/lnRB/7iUX/+4lF//r49V/5+ETf+fhE3/n4RN/5+ETf+fhE3/Z1As/35iN/9+Yjf/Z1As/2dQLP9+Yjf/lnRB/5Z0Qf+WdEH/fmI3/2dQLP9+Yjf/Z1As/2dQLP9nUCz/Z1As/w==",
+  oak_leaves: "RG0b/0RtG/8AAAAAe8Ux/wAAAABloSj/ZaEo/wAAAABOfR//Tn0f/0RtG/9loSj/AAAAAAAAAAB7xTH/Tn0f/2WhKP8AAAAAAAAAAAAAAABEbRv/RG0b/059H/9loSj/AAAAAGWhKP9OfR//ZaEo/wAAAAB7xTH/ZaEo/3vFMf8AAAAAAAAAAE59H/9OfR//AAAAAGWhKP9loSj/Tn0f/3vFMf8AAAAAZaEo/wAAAAAAAAAAe8Ux/3vFMf97xTH/AAAAAGWhKP9OfR//RG0b/0RtG/8AAAAAe8Ux/2WhKP97xTH/RG0b/wAAAAAAAAAAAAAAAAAAAAB7xTH/AAAAAGWhKP9OfR//ZaEo/059H/8AAAAAAAAAAGWhKP97xTH/AAAAAAAAAAAAAAAARG0b/2WhKP9loSj/AAAAAAAAAABloSj/ZaEo/059H/8AAAAAAAAAAHvFMf9OfR//RG0b/0RtG/9EbRv/AAAAAAAAAABEbRv/Tn0f/2WhKP8AAAAATn0f/059H/8AAAAARG0b/3vFMf9loSj/e8Ux/2WhKP8AAAAATn0f/059H/8AAAAAZaEo/2WhKP9OfR//e8Ux/059H/9EbRv/RG0b/wAAAAB7xTH/e8Ux/3vFMf8AAAAARG0b/0RtG/9OfR//ZaEo/wAAAAB7xTH/Tn0f/2WhKP97xTH/ZaEo/wAAAABEbRv/RG0b/3vFMf9loSj/ZaEo/wAAAABOfR//ZaEo/059H/9loSj/AAAAAGWhKP9OfR//e8Ux/wAAAAAAAAAAAAAAAERtG/9EbRv/RG0b/059H/9loSj/AAAAAGWhKP9loSj/ZaEo/wAAAAB7xTH/ZaEo/wAAAABloSj/ZaEo/wAAAABEbRv/AAAAAGWhKP9loSj/Tn0f/3vFMf8AAAAAZaEo/wAAAAAAAAAAAAAAAHvFMf97xTH/Tn0f/0RtG/9EbRv/AAAAAAAAAAAAAAAAe8Ux/2WhKP97xTH/AAAAAE59H/9loSj/AAAAAAAAAAAAAAAATn0f/2WhKP9loSj/AAAAAGWhKP9loSj/AAAAAAAAAAB7xTH/AAAAAERtG/9EbRv/Tn0f/3vFMf8AAAAAe8Ux/2WhKP97xTH/AAAAAHvFMf9OfR//RG0b/0RtG/8AAAAAAAAAAERtG/8AAAAAZaEo/3vFMf9OfR//ZaEo/3vFMf97xTH/AAAAAHvFMf9loSj/e8Ux/2WhKP8AAAAAAAAAAE59H/9OfR//AAAAAAAAAAB7xTH/ZaEo/3vFMf8AAAAAZaEo/wAAAAB7xTH/e8Ux/3vFMf8AAAAAAAAAAERtG/9EbRv/RG0b/059H/8AAAAAAAAAAHvFMf8AAAAAZaEo/w==",
+  glowstone: "+9p0/8yGVP+FUCn/b0Ui/29FIv/MhlT/+9p0/8yGVP/MhlT/b0Ui/4VQKf////////Da/8yGVP+FUCn/iGg5///w2v/72nT/zIZU/29FIv9zTib/c04m/4VQKf/MhlT/b0Ui/4hoOf/MhlT///Da///w2v/72nT/zIZU/29FIv+FUCn/zIZU/29FIv+IaDn/hVAp/4VQKf9vRSL/c04m/3NOJv+IaDn/c04m/29FIv/72nT/zIZU/29FIv+IaDn/iGg5/29FIv+IaDn/zIZU//vadP/MhlT/hVAp/29FIv9zTib///////vadP9zTib/b0Ui/29FIv+IaDn/iGg5/29FIv9zTib/zIZU////////8Nr///Da/8yGVP9vRSL/+9p0///w2v//8Nr/zIZU/3NOJv+IaDn///Da//vadP9vRSL/hVAp//vadP//8Nr///Da//vadP/72nT/hVAp/8yGVP/72nT/zIZU/4VQKf+IaDn///Da///////72nT/c04m/29FIv9vRSL/zIZU//vadP/72nT/zIZU/29FIv+FUCn/b0Ui/3NOJv+IaDn/hVAp/8yGVP/72nT/b0Ui//vadP+IaDn/c04m/29FIv+FUCn/zIZU/29FIv9zTib/b0Ui/4hoOf/72nT/hVAp/4hoOf+FUCn/b0Ui/8yGVP//8Nr/+9p0/4VQKf+IaDn/b0Ui/4VQKf9zTib/iGg5/4VQKf////////Da//vadP9vRSL/c04m//vadP////////Da/8yGVP/MhlT/hVAp///w2v/72nT/zIZU/4hoOf/MhlT///Da///w2v/MhlT/b0Ui/4hoOf+IaDn/+9p0/8yGVP+FUCn/b0Ui/8yGVP/72nT/zIZU/4VQKf+FUCn/b0Ui/8yGVP/72nT/hVAp/29FIv9zTib/iGg5/29FIv9vRSL/b0Ui/4hoOf+FUCn/b0Ui/4hoOf/72nT///Da/4hoOf9vRSL/zIZU/29FIv9zTib/hVAp/4hoOf9zTib/c04m/4hoOf/72nT/zIZU/29FIv9zTib///Da///////72nT/zIZU/29FIv+IaDn///Da//vadP+FUCn/b0Ui/4hoOf/72nT////////w2v//8Nr/b0Ui/4hoOf/72nT/zIZU/4VQKf9zTib/+9p0////////8Nr/zIZU/29FIv+IaDn/zIZU///w2v/72nT/zIZU/4VQKf9vRSL/c04m/29FIv9vRSL/iGg5/4VQKf/MhlT/hVAp/29FIv9zTib/iGg5/3NOJv/72nT/zIZU/4VQKf9zTib///Da//vadP+FUCn/c04m/3NOJv9vRSL/b0Ui/29FIv9zTib/iGg5/w==",
+  bedrock: "Y2Nj/zMzM/8zMzP/MzMz/zMzM/9XV1f/l5eX/2NjY/9XV1f/l5eX/1dXV/8zMzP/MzMz/1dXV/8zMzP/V1dX/zMzM/9jY2P/Y2Nj/5eXl/9jY2P/l5eX/2NjY/+Xl5f/MzMz/5eXl/+Xl5f/Y2Nj/yIiIv8zMzP/V1dX/zMzM/8zMzP/IiIi/zMzM/8zMzP/IiIi/zMzM/8zMzP/MzMz/5eXl/8zMzP/V1dX/1dXV/9XV1f/l5eX/1dXV/9jY2P/V1dX/5eXl/9jY2P/Y2Nj/1dXV/8iIiL/V1dX/5eXl/9XV1f/V1dX/zMzM/8zMzP/MzMz/zMzM/8zMzP/V1dX/yIiIv8zMzP/l5eX/zMzM/8zMzP/MzMz/zMzM/9XV1f/MzMz/zMzM/9jY2P/l5eX/5eXl/9jY2P/Y2Nj/zMzM/8zMzP/V1dX/1dXV/9XV1f/MzMz/1dXV/9XV1f/MzMz/zMzM/8iIiL/V1dX/1dXV/8zMzP/MzMz/yIiIv8zMzP/l5eX/5eXl/9jY2P/V1dX/2NjY/+Xl5f/l5eX/2NjY/9XV1f/Y2Nj/5eXl/+Xl5f/Y2Nj/5eXl/8zMzP/IiIi/1dXV/9XV1f/V1dX/zMzM/9XV1f/V1dX/1dXV/8zMzP/MzMz/yIiIv8zMzP/MzMz/1dXV/8zMzP/Y2Nj/1dXV/9jY2P/l5eX/5eXl/9XV1f/MzMz/zMzM/9XV1f/V1dX/2NjY/+Xl5f/l5eX/2NjY/+Xl5f/l5eX/5eXl/+Xl5f/V1dX/zMzM/8zMzP/IiIi/zMzM/9XV1f/MzMz/1dXV/8zMzP/Y2Nj/1dXV/8zMzP/MzMz/zMzM/+Xl5f/Y2Nj/2NjY/9jY2P/l5eX/zMzM/9jY2P/l5eX/5eXl/8zMzP/IiIi/zMzM/+Xl5f/l5eX/5eXl/9jY2P/MzMz/zMzM/8iIiL/V1dX/1dXV/9XV1f/MzMz/zMzM/9XV1f/Y2Nj/5eXl/+Xl5f/V1dX/2NjY/9jY2P/l5eX/5eXl/8iIiL/V1dX/zMzM/8zMzP/MzMz/2NjY/9XV1f/MzMz/zMzM/9jY2P/l5eX/zMzM/8zMzP/MzMz/zMzM/8zMzP/V1dX/2NjY/+Xl5f/Y2Nj/5eXl/9XV1f/IiIi/1dXV/8zMzP/MzMz/zMzM/8iIiL/MzMz/1dXV/9jY2P/l5eX/5eXl/9jY2P/Y2Nj/1dXV/8zMzP/MzMz/1dXV/8zMzP/MzMz/1dXV/9jY2P/l5eX/5eXl/9XV1f/MzMz/zMzM/9XV1f/MzMz/yIiIv8zMzP/MzMz/yIiIv+Xl5f/l5eX/2NjY/8zMzP/V1dX/2NjY/8iIiL/MzMz/zMzM/9XV1f/Y2Nj/w==",
+  sand: "5+S7/9rPo//az6P/49uw/9rPo//VxJb/49uw/9rPo//j27D/2s+j/9XElv/j27D/2s+j/+PbsP/VxJb/49uw/9XElv/az6P/2s+j/9XElv/az6P/1cSW/9XElv/j27D/0bqK/9XElv/n5Lv/2s+j/+3ry//Ruor/2s+j/+fku//j27D/2s+j/9G6iv/VxJb/1cSW/+fku//az6P/2s+j/9rPo//az6P/2s+j/9XElv/az6P/1cSW/9XElv/az6P/2s+j/+PbsP/j27D/1cSW/9rPo//VxJb/49uw/9XElv/j27D/49uw/9XElv/j27D/2s+j/9XElv/az6P/2s+j/9XElv/az6P/7evL/9rPo//VxJb/49uw/9rPo//j27D/2s+j/+PbsP/az6P/2s+j/9XElv/az6P/2s+j/+PbsP/az6P/1cSW/9rPo//az6P/49uw/+PbsP/j27D/2s+j/9XElv/az6P/49uw/9XElv/az6P/2s+j/9XElv/az6P/1cSW/+fku//az6P/1cSW/9XElv/t68v/1cSW/9rPo//VxJb/1cSW/9G6iv/az6P/2s+j/9XElv/az6P/1cSW/9rPo//VxJb/2s+j/9rPo//VxJb/2s+j/9rPo//VxJb/2s+j/9XElv/VxJb/1cSW/9rPo//n5Lv/2s+j/9XElv/VxJb/2s+j/+PbsP/az6P/2s+j/+PbsP/VxJb/0bqK/9XElv/j27D/1cSW/9rPo//j27D/2s+j/9XElv/az6P/5+S7/9rPo//VxJb/2s+j/9rPo//az6P/1cSW/9XElv/az6P/0bqK/9rPo//VxJb/2s+j/9rPo//j27D/1cSW/9rPo//Ruor/2s+j/+PbsP/az6P/1cSW/9rPo//j27D/2s+j/9rPo//j27D/2s+j/9G6iv/VxJb/2s+j/+PbsP/VxJb/1cSW/9rPo//az6P/49uw/9rPo//VxJb/2s+j/+PbsP/j27D/1cSW/9XElv/VxJb/2s+j/9XElv/az6P/1cSW/9rPo//VxJb/49uw/9XElv/j27D/2s+j/9XElv/n5Lv/7evL/+PbsP/az6P/1cSW/9XElv/az6P/49uw/+PbsP/az6P/49uw/9rPo//j27D/0bqK/9rPo//j27D/2s+j/+PbsP/az6P/49uw/9rPo//az6P/1cSW/9rPo//az6P/49uw/9rPo//j27D/7evL/+PbsP/j27D/2s+j/+PbsP/az6P/49uw/9rPo//Ruor/49uw/9rPo//az6P/49uw/9rPo//j27D/2s+j/+PbsP/j27D/2s+j/+PbsP/az6P/1cSW/9rPo//az6P/49uw/9rPo//j27D/2s+j/w==",
+  water: "GWHqtBdX0rQXV9K0F1fStBVSx7QVUse0FVLHtBdX0rQXV9K0F1fStBdX0rQXV9K0GWHqtBtp/rQbZ/q0HGr/tBVSx7QVUse0FVLHtBVSx7QXV9K0F1fStBdX0rQXV9K0F1fStBdX0rQVUse0FVLHtBVSx7QVUse0FVLHtBVSx7QXV9K0F1fStBVSx7QVUse0FVLHtBVSx7QVUse0FVLHtBdX0rQXV9K0GWHqtBlh6rQZYeq0F1fStBVSx7QVUse0F1fStBVSx7QVUse0FVLHtBdX0rQZYeq0GWHqtBdX0rQXV9K0F1fStBlh6rQZYeq0F1fStBdX0rQXV9K0F1fStBVSx7QVUse0F1fStBdX0rQXV9K0FVLHtBVSx7QVUse0FVLHtBdX0rQVUse0FVLHtBVSx7QXV9K0F1fStBdX0rQVUse0FVLHtBdX0rQVUse0F1fStBdX0rQZYeq0F1fStBdX0rQXV9K0GWHqtBdX0rQXV9K0FVLHtBVSx7QVUse0GWHqtBdX0rQXV9K0F1fStBdX0rQXV9K0F1fStBdX0rQXV9K0F1fStBdX0rQXV9K0HGn/tBtp/rQhf/+0GWHqtBxp/7QbZ/q0HGn/tBdX0rQXV9K0F1fStBlh6rQXV9K0F1fStBdX0rQXV9K0F1fStBdX0rQXV9K0GWHqtBlh6rQhf/+0IX//tBxp/7QZYeq0G2n+tCF//7Qcaf+0GWHqtBdX0rQZYeq0F1fStBlh6rQZYeq0F1fStBdX0rQcaf+0FVLHtBVSx7QVUse0FVLHtBVSx7QVUse0FVLHtBVSx7QVUse0FVLHtBVSx7QVUse0FVLHtBdX0rQVUse0FVLHtBdX0rQVUse0FVLHtBVSx7QVUse0F1fStBVSx7QVUse0FVLHtBdX0rQXV9K0GWHqtBdX0rQXV9K0F1fStBdX0rQVUse0FVLHtBVSx7QVUse0FVLHtBVSx7QVUse0FVLHtBVSx7QVUse0FVLHtBVSx7QVUse0FVLHtBVSx7QXV9K0FVLHtBVSx7QVUse0FVLHtBVSx7QVUse0FVLHtBVSx7QVUse0FVLHtBVSx7QXV9K0FVLHtBVSx7QVUse0FVLHtBdX0rQVUse0FVLHtBVSx7QVUse0F1fStBdX0rQXV9K0F1fStBdX0rQZYeq0GWHqtBdX0rQVUse0F1fStBVSx7QVUse0FVLHtBVSx7QVUse0FVLHtBVSx7QVUse0F1fStBdX0rQZYeq0IX//tCF//7QbZ/q0GWHqtBdX0rQVUse0F1fStBlh6rQXV9K0F1fStBxp/7QhfP+0IXz/tBlh6rQXV9K0F1fStBlh6rQXV9K0F1fStBdX0rQXV9K0F1fStA==",
+  coal_ore: "j4+P/4+Pj/+Pj4//j4+P/39/f/90dHT/dHR0/39/f/90dHT/aGho/3R0dP90dHT/f39//39/f/9/f3//f39//39/f/9/f3//dHR0/39/f/90dHT/f39//1xcXP9cXFz/XFxc/39/f/9/f3//aGho/2hoaP9cXFz/f39//3R0dP9/f3//dHR0/2hoaP9oaGj/dHR0/1xcXP8lJSX/OTw2/zY2Nv9cXFz/dHR0/39/f/8uLi7/NjY2/39/f/9/f3//f39//1xcXP90dHT/dHR0/39/f/8uLi7/OTw2/zY2Nv9JSz//Li4u/yUlJf9/f3//f39//3R0dP90dHT/dHR0/3R0dP8lJSX/NjY2/3R0dP90dHT/dHR0/1xcXP8uLi7/JSUl/yUlJf9cXFz/dHR0/3R0dP90dHT/f39//39/f/9/f3//j4+P/4+Pj/9/f3//dHR0/39/f/+Pj4//j4+P/4+Pj/90dHT/dHR0/1xcXP9cXFz/aGho/3R0dP+Pj4//dHR0/4+Pj/9/f3//dHR0/1xcXP90dHT/dHR0/3R0dP9/f3//dHR0/zk8Nv8uLi7/OTw2/1xcXP9/f3//f39//3R0dP9cXFz/dHR0/1xcXP8lJSX/OTw2/y4uLv9cXFz/f39//39/f/9cXFz/OTw2/0lLP/9/f3//j4+P/4+Pj/+Pj4//dHR0/39/f/8lJSX/OTw2/0lLP/82Njb/Li4u/39/f/90dHT/f39//3R0dP90dHT/dHR0/39/f/90dHT/f39//4+Pj/90dHT/XFxc/y4uLv82Njb/XFxc/3R0dP90dHT/j4+P/4+Pj/9/f3//f39//1xcXP9cXFz/f39//2hoaP9/f3//j4+P/3R0dP9cXFz/XFxc/39/f/90dHT/f39//3R0dP90dHT/dHR0/1xcXP8lJSX/OTw2/2hoaP9/f3//f39//1xcXP9cXFz/dHR0/1xcXP9/f3//f39//3R0dP9/f3//XFxc/1xcXP90dHT/dHR0/3R0dP90dHT/f39//1xcXP8lJSX/SUs//zY2Nv8lJSX/JSUl/4+Pj/+Pj4//XFxc/0lLP/85PDb/JSUl/3R0dP9oaGj/aGho/4+Pj/90dHT/XFxc/zk8Nv8lJSX/XFxc/3R0dP90dHT/dHR0/1xcXP82Njb/JSUl/1xcXP90dHT/dHR0/39/f/9/f3//dHR0/3R0dP90dHT/f39//39/f/82Njb/Li4u/39/f/9/f3//XFxc/39/f/9/f3//f39//4+Pj/+Pj4//f39//39/f/90dHT/dHR0/3R0dP9/f3//j4+P/3R0dP9/f3//j4+P/4+Pj/9/f3//f39//3R0dP9/f3//f39//w==",
+  iron_ore: "j4+P/39/f/9/f3//f39//39/f/90dHT/dHR0/39/f/90dHT/aGho/3R0dP90dHT/dHR0/3R0dP+Pj4//j4+P/39/f/9/f3//dHR0/2hoaP9oaGj/f39//39/f/+Pj4//j4+P/39/f/93Z0//iHRV/4h0Vf93Z0//f39//3R0dP9/f3//dHR0/4h0Vf+vjnf/iHRV/3R0dP9/f3//aGho/3R0dP90dHT/f39//4h0Vf+vjnf/f39//39/f/9/f3//f39//4h0Vf+vjnf/2K+T/4+Pj/9/f3//dHR0/2hoaP9oaGj/aGho/3R0dP9/f3//f39//3R0dP90dHT/dHR0/3R0dP+Pj4//j4+P/4+Pj/90dHT/aGho/2hoaP+IdFX/iHRV/6+Od/+vjnf/iHRV/2hoaP9oaGj/dHR0/39/f/9/f3//j4+P/39/f/9/f3//iHRV/6+Od//Yr5P/2K+T/+LAqv/Yr5P/r453/39/f/90dHT/iHRV/6+Od/+Pj4//dHR0/39/f/9/f3//j4+P/4+Pj/+Pj4//r453/9ivk//Yr5P/j4+P/39/f/90dHT/f39//4+Pj/+Pj4//f39//3R0dP90dHT/f39//2hoaP9oaGj/dHR0/4+Pj/+Pj4//j4+P/39/f/90dHT/aGho/2hoaP9/f3//f39//39/f/+Pj4//j4+P/2hoaP+IdFX/r453/2hoaP9oaGj/dHR0/39/f/93Z0//iHRV/6+Od/93Z0//dHR0/39/f/90dHT/f39//4+Pj/93Z0//r453/6+Od//Yr5P/2K+T/4+Pj/9/f3//j4+P/6+Od//Yr5P/j4+P/4+Pj/+Pj4//f39//2hoaP9/f3//j4+P/4+Pj//Yr5P/4sCq/4+Pj/9oaGj/dHR0/39/f/+Pj4//j4+P/39/f/90dHT/dHR0/3R0dP9/f3//f39//39/f/9/f3//j4+P/4+Pj/9/f3//j4+P/39/f/9/f3//f39//3dnT/+IdFX/j4+P/39/f/+Pj4//f39//3R0dP9oaGj/dHR0/4h0Vf+vjnf/j4+P/3R0dP93Z0//iHRV/6+Od//Yr5P/2K+T/6+Od/+IdFX/dHR0/4+Pj/+IdFX/r453/3R0dP9/f3//j4+P/39/f/90dHT/j4+P/6+Od//Yr5P/4sCq/6+Od/+Pj4//j4+P/39/f/9/f3//j4+P/4h0Vf93Z0//dHR0/39/f/9/f3//f39//39/f/+Pj4//j4+P/4+Pj/+Pj4//f39//39/f/9/f3//f39//39/f/+Pj4//j4+P/39/f/9/f3//dHR0/3R0dP9/f3//f39//4+Pj/+Pj4//f39//3R0dP9/f3//f39//w==",
+  copper_ore: "j4+P/4+Pj/+Pj4//j4+P/39/f/+Pj4//j4+P/39/f/90dHT/aGho/3R0dP90dHT/f39//39/f/90dHT/f39//39/f/9/f3//dHR0/39/f/90dHT/dHR0/39/f/9/f3//f39//39/f/9/f3//aGho/2hoaP90dHT/f39//39/f/9/f3//dHR0/zp2Y/86dmP/aGho/1xcXP9cXFz/aGho/2hoaP9oaGj/dHR0/+BzTf/BZ0b/j4+P/3R0dP90dHT/f39//39/f/+Pj4//dHR0/1xcXP86dmP/OnZj/1xcXP9oaGj/j4+P/39/f/+Pj4//oqKi/39/f/90dHT/f39//3R0dP90dHT/dHR0/1xcXP86dmP/gYBY/+BzTf/BZ0b/gYBY/4+Pj/9/f3//f39//3R0dP90dHT/f39//39/f/9/f3//j4+P/2hoaP+BgFj/wWdG/+BzTf/zgmj/oqKi/4+Pj/90dHT/dHR0/1xcXP9cXFz/aGho/3R0dP+Pj4//dHR0/39/f/9/f3//f39//4+Pj/+ioqL/oqKi/4+Pj/90dHT/aGho/1xcXP+BgFj/gYBY/1xcXP90dHT/f39//3R0dP9oaGj/dHR0/1xcXP9cXFz/aGho/3R0dP9/f3//f39//zpoWv9ZlYH/T7qY/1mVgf/BZ0b/aGho/39/f/+Pj4//j4+P/2hoaP86dmP/gYBY/1xcXP9oaGj/f39//4+Pj/+Pj4//Omha/1mVgf+BgFj/4HNN/8FnRv90dHT/f39//1mVgf9Pupj/T7qY/1mVgf+BgFj/f39//4+Pj/9/f3//dHR0/4+Pj/86dmP/oqKi/6Kiov+Pj4//f39//3R0dP+Pj4//OnZj/1mVgf+ioqL/j4+P/39/f/9cXFz/aGho/39/f/9/f3//j4+P/6Kiov9/f3//f39//3R0dP9/f3//f39//4+Pj/+ioqL/f39//2hoaP9oaGj/wWdG/1xcXP9oaGj/f39//39/f/+Pj4//f39//3R0dP90dHT/f39//3R0dP90dHT/dHR0/2hoaP86dmP/gYBY/+BzTf/zgmj/wWdG/3R0dP9oaGj/dHR0/2hoaP9oaGj/f39//4+Pj/+Pj4//OnZj/4GAWP+ioqL/j4+P/zp2Y/+BgFj/OnZj/6Kiov+Pj4//f39//2hoaP86dmP/T7qY/3R0dP9/f3//j4+P/6Kiov+ioqL/j4+P/39/f/+Pj4//oqKi/6Kiov+Pj4//f39//39/f/+Pj4//j4+P/39/f/+Pj4//f39//39/f/9/f3//dHR0/39/f/90dHT/f39//4+Pj/9/f3//f39//39/f/9/f3//f39//4+Pj/+Pj4//f39//w==",
+  gold_ore: "j4+P/4+Pj/+Pj4//j4+P/3R0dP90dHT/dHR0/39/f/90dHT/aGho/3R0dP90dHT/f39//39/f/9/f3//f39//39/f/9/f3//dHR0/39/f/+ccCD/f39//39/f/9oaGj/f39//39/f/9/f3//aGho/2hoaP9cXFz/f39//3R0dP9/f3//dHR0/2hoaP9oaGj/j4+P/2hoaP9cXFz/nHAg/2hoaP90dHT/dHR0/1xcXP9cXFz/nHAg/5xwIP9/f3//f39//4+Pj/+Pj4//f39//2hoaP9cXFz/nHAg/+udDv+ccCD/dHR0/39/f/9cXFz/nHAg/+udDv+ccCD/dHR0/3R0dP9/f3//f39//2hoaP9cXFz/nHAg/+udDv/87kv/nHAg/2hoaP+Pj4//j4+P/+udDv/rnQ7/oqKi/39/f/9/f3//j4+P/39/f/9oaGj/650O//zuS//87kv///+1/+udDv90dHT/dHR0/2hoaP+ioqL/oqKi/3R0dP+Pj4//dHR0/39/f/9/f3//j4+P/6Kiov/rnQ7//O5L/+udDv+ccCD/oqKi/3R0dP90dHT/f39//39/f/9/f3//f39//3R0dP90dHT/aGho/2hoaP90dHT/oqKi/+udDv+ioqL/oqKi/39/f/90dHT/dHR0/3R0dP/rnQ7/nHAg/39/f/+Pj4//aGho/5xwIP/rnQ7/j4+P/6Kiov+ccCD/oqKi/4+Pj/+Pj4//f39//39/f/9oaGj/f39//39/f/90dHT/f39//3R0dP/rnQ7//O5L/6Kiov9/f3//oqKi/4+Pj/+Pj4//f39//1xcXP9cXFz/XFxc/2hoaP+Pj4//f39//2hoaP+Pj4//oqKi/6Kiov+Pj4//dHR0/2hoaP9oaGj/dHR0/1xcXP+ccCD/nHAg/+udDv9oaGj/aGho/3R0dP9/f3//f39//2hoaP9oaGj/aGho/4+Pj/+Pj4//f39//2hoaP+ccCD/650O/+udDv///7X//O5L/5xwIP9oaGj/f39//3R0dP+ccCD/nHAg/+udDv90dHT/f39//5xwIP90dHT/oqKi/+udDv/87kv//O5L/6Kiov+ioqL/dHR0/4+Pj/+ccCD/650O//zuS////7X//O5L/4+Pj/+ioqL/dHR0/39/f/+ccCD/650O/6Kiov90dHT/dHR0/4+Pj/9/f3//dHR0/6Kiov/rnQ7//O5L/4+Pj/9/f3//f39//39/f/9/f3//oqKi/6Kiov+Pj4//j4+P/+udDv+Pj4//f39//39/f/9/f3//j4+P/6Kiov9/f3//dHR0/3R0dP9/f3//j4+P/4+Pj/9/f3//f39//3R0dP9/f3//f39//w==",
+  diamond_ore: "j4+P/39/f/9/f3//j4+P/39/f/90dHT/dHR0/39/f/90dHT/Z2dn/3R0dP90dHT/f39//4+Pj/+Pj4//j4+P/39/f/9/f3//dHR0/39/f/9nZ2f/j4+P/4+Pj/+Pj4//j4+P/39/f/9/f3//dHR0/2dnZ/9nZ2f/dHR0/39/f/9/f3//dHR0/2dnZ/9nZ2f/HtDW/4+Pj/9/f3//Z2dn/2dnZ/90dHT/dHR0/2dnZ/9359H/I5aY/39/f/9/f3//j4+P/4+Pj/+Pj4//f39//42tsf+Pj4//Z2dn/3fn0f8jlpj/ja2x/4+Pj/9/f3//ja2x/4+Pj/90dHT/dHR0/3R0dP9/f3//f39//39/f/90dHT/Z2dn/2dnZ/+Pj4//ja2x/39/f/90dHT/f39//4+Pj/90dHT/f39//39/f/9/f3//j4+P/39/f/90dHT/Z2dn/9X/9v9359H/Z2dn/39/f/90dHT/1f/2/3fn0f90dHT/Z2dn/3R0dP+Pj4//dHR0/3R0dP+Pj4//1f/2/3fn0f8e0Nb/HtDW/yOWmP+NrbH/f39//x7Q1v8jlpj/f39//39/f/9/f3//f39//4+Pj/9nZ2f/Z2dn/4+Pj/+NrbH/oqKi/42tsf+NrbH/Z2dn/2dnZ/+Pj4//ja2x/39/f/+Pj4//oqKi/6Kiov9nZ2f/d+fR/x7Q1v+NrbH/j4+P/39/f/90dHT/Z2dn/9X/9v9359H/dHR0/39/f/9/f3//f39//4+Pj/90dHT/f39//42tsf+NrbH/f39//2dnZ/9/f3//dHR0/3fn0f8e0Nb/I5aY/yOWmP+NrbH/j4+P/6Kiov+ioqL/f39//2dnZ/9/f3//dHR0/39/f/8e0Nb/dHR0/2dnZ/+Pj4//ja2x/42tsf+Pj4//Z2dn/2dnZ/90dHT/dHR0/3R0dP9/f3//f39//39/f/9/f3//f39//4+Pj/+Pj4//j4+P/4+Pj/90dHT/Z2dn/3fn0f8jlpj/j4+P/4+Pj/9/f3//f39//3R0dP+Pj4//Z2dn/2dnZ/9/f3//j4+P/3R0dP9359H/1f/2/3fn0f8e0Nb/HtDW/yOWmP+Pj4//dHR0/4+Pj/+Pj4//ja2x/3fn0f8jlpj/Z2dn/3R0dP9/f3//oqKi/yOWmP8e0Nb/ja2x/42tsf+Pj4//f39//39/f/9/f3//dHR0/3R0dP+NrbH/j4+P/4+Pj/+Pj4//f39//39/f/+Pj4//ja2x/39/f/90dHT/dHR0/3R0dP9/f3//f39//39/f/9/f3//f39//39/f/9/f3//dHR0/4+Pj/9/f3//f39//39/f/9/f3//f39//39/f/+Pj4//j4+P/w==",
+};
+
 // ===== src/blocks.js =====
 // src/blocks.js — block definitions + procedural canvas texture atlas.
 // 16px tiles, 8x8 atlas (128px), NearestFilter for the blocky look (per the r/LocalLLaMA spec).
@@ -310,127 +339,45 @@ const BLOCKS = {
 
 const HOTBAR = [1, 2, 3, 4, 6, 9]; // grass dirt stone log plank sand (glow 7 via 'G' key)
 
-// --- tile painters: each draws a 16x16 blocky tile onto ctx at (ox, oy) ---
-const px = (ctx, x, y, c) => { ctx.fillStyle = c; ctx.fillRect(x, y, 1, 1); };
-function speckle(ctx, ox, oy, base, spots, rand) {
-  pxFill(ctx, ox, oy, 16, 16, base);
-  for (let i = 0; i < spots; i++) {
-    px(ctx, ox + (rand() * 16) | 0, oy + (rand() * 16) | 0, shade(base, rand() < 0.5 ? -1 : 1));
-  }
-}
-function pxFill(ctx, ox, oy, w, h, c) { ctx.fillStyle = c; ctx.fillRect(ox, oy, w, h); }
-function shade(hex, dir) {
-  const n = parseInt(hex.slice(1), 16);
-  let r = (n >> 16) + 16 * dir, g = ((n >> 8) & 255) + 16 * dir, b = (n & 255) + 16 * dir;
-  r = Math.max(0, Math.min(255, r)); g = Math.max(0, Math.min(255, g)); b = Math.max(0, Math.min(255, b));
-  return `rgb(${r},${g},${b})`;
+// --- Vanilla 1.21.4 textures (Route B) ---
+// src/vanilla-atlas.js: 17 Mojang 16x16 tiles, base64 raw RGBA, fetched from
+// github.com/misode/mcmeta tag 1.21.4-assets (2026-09-09). The jar stores
+// grass_block_top / oak_leaves / water as grayscale LUMINANCE MASKS; the atlas
+// bakes the vanilla Plains-biome tint (final = tint * L/128, alpha kept) the
+// same way Minecraft does at runtime (colormap/grass.png, foliage.png, water
+// color). Every other tile is stored already-colored.
+
+const VANILLA_BY_TILE = {
+  [T.GRASS_TOP]: 'grass_block_top', [T.GRASS_SIDE]: 'grass_block_side',
+  [T.DIRT]: 'dirt', [T.STONE]: 'stone', [T.LOG_SIDE]: 'oak_log_side',
+  [T.LOG_TOP]: 'oak_log_top', [T.LEAVES]: 'oak_leaves', [T.PLANK]: 'oak_planks',
+  [T.GLOW]: 'glowstone', [T.BEDROCK]: 'bedrock', [T.SAND]: 'sand',
+  [T.WATER]: 'water', [T.COAL_ORE]: 'coal_ore', [T.IRON_ORE]: 'iron_ore',
+  [T.COPPER_ORE]: 'copper_ore', [T.GOLD_ORE]: 'gold_ore', [T.DIAMOND_ORE]: 'diamond_ore',
+};
+const VANILLA = {};
+for (const id in VANILLA_BY_TILE) {
+  const s = atob(VANILLA_TILES[VANILLA_BY_TILE[id]]);
+  const d = new Uint8ClampedArray(s.length);
+  for (let i = 0; i < s.length; i++) d[i] = s.charCodeAt(i);
+  VANILLA[id] = d; // raw RGBA, 16*16*4
 }
 
-// --- Route A: vanilla-palette hex reference (locked 2026-09-07) ---
-// Base color of each tile retuned to the vanilla 16x16 average; mottling is a
-// shade or two around the base so the perceived (distance-averaged) color is the
-// vanilla value. No external assets (Route B — pixel-exact, needs Dan-supplied
-// atlas — is deferred).
-//   tile          base        notes
-//   GRASS_TOP     #6fae4c     mottled green
-//   GRASS_SIDE    #866043 + #6fae4c cap (3px)
-//   DIRT          #866043     brown
-//   STONE         #7d7d7d     neutral grey mottle
-//   LOG_SIDE      #6e5230     oak bark vertical grain
-//   LOG_TOP       #6e5230     oak growth rings
-//   LEAVES        #5a8f39     opaque green mottle
-//   PLANK         #b58e58     oak plank
-//   GLOW          #ffd54a     emissive (shader pulse)
-//   BEDROCK       #3a3a3e     high-contrast grey/black
-//   SAND          #dbcf8f     pale tan
-//   WATER         #2a5bc0 a.62
-const painters = {
-  [T.GRASS_TOP](ctx, ox, oy, rand) {
-    pxFill(ctx, ox, oy, 16, 16, '#6fae4c');
-    for (let i = 0; i < 26; i++) px(ctx, ox + (rand() * 16) | 0, oy + (rand() * 16) | 0, rand() < 0.5 ? '#5f9a40' : '#7fc45c');
-  },
-  [T.GRASS_SIDE](ctx, ox, oy, rand) {
-    pxFill(ctx, ox, oy, 16, 16, '#866043');
-    for (let i = 0; i < 22; i++) px(ctx, ox + (rand() * 16) | 0, oy + 4 + (rand() * 12) | 0, rand() < 0.5 ? '#7a5638' : '#94684a');
-    pxFill(ctx, ox, oy, 16, 3, '#6fae4c');
-    for (let x = 0; x < 16; x++) if (rand() < 0.6) px(ctx, ox + x, oy + 3, '#5f9a40');
-  },
-  [T.DIRT](ctx, ox, oy, rand) { speckle(ctx, ox, oy, '#866043', 26, rand); },
-  [T.STONE](ctx, ox, oy, rand) {
-    pxFill(ctx, ox, oy, 16, 16, '#7d7d7d');
-    for (let i = 0; i < 12; i++) {
-      const x = (rand() * 16) | 0, y = (rand() * 16) | 0, w = 2 + (rand() * 3) | 0;
-      ctx.fillStyle = rand() < 0.5 ? '#6f6f6f' : '#8c8c8c'; ctx.fillRect(ox + x, oy + y, w, 1);
-    }
-  },
-  [T.LOG_SIDE](ctx, ox, oy, rand) {
-    pxFill(ctx, ox, oy, 16, 16, '#6e5230');
-    for (let x = 0; x < 16; x += 4) { ctx.fillStyle = '#57421f'; ctx.fillRect(ox + x, oy, 1, 16); }
-    for (let i = 0; i < 8; i++) px(ctx, ox + (rand() * 16) | 0, oy + (rand() * 16) | 0, '#7d5c34');
-  },
-  [T.LOG_TOP](ctx, ox, oy, rand) {
-    pxFill(ctx, ox, oy, 16, 16, '#6e5230');
-    ctx.fillStyle = '#a2804e'; ctx.fillRect(ox + 3, oy + 3, 10, 10);
-    ctx.fillStyle = '#7d5c34'; ctx.fillRect(ox + 5, oy + 5, 6, 6);
-    ctx.fillStyle = '#57421f'; ctx.fillRect(ox + 7, oy + 7, 2, 2);
-  },
-  [T.LEAVES](ctx, ox, oy, rand) {
-    pxFill(ctx, ox, oy, 16, 16, '#5a8f39');
-    for (let i = 0; i < 34; i++) px(ctx, ox + (rand() * 16) | 0, oy + (rand() * 16) | 0, rand() < 0.4 ? '#4a7a2c' : '#6aa048');
-    for (let i = 0; i < 5; i++) px(ctx, ox + (rand() * 16) | 0, oy + (rand() * 16) | 0, '#35601e');
-  },
-  [T.PLANK](ctx, ox, oy, rand) {
-    pxFill(ctx, ox, oy, 16, 16, '#b58e58');
-    for (let y = 0; y < 16; y += 4) { ctx.fillStyle = '#8a6a3f'; ctx.fillRect(ox, oy + y, 16, 1); }
-    for (let i = 0; i < 6; i++) px(ctx, ox + (rand() * 16) | 0, oy + (rand() * 16) | 0, '#c49d63');
-  },
-  [T.GLOW](ctx, ox, oy, rand) {
-    // pulse-block: bright core, drawn once — animation is a shader brightness pulse, not texture swap
-    pxFill(ctx, ox, oy, 16, 16, '#ffd54a');
-    ctx.fillStyle = '#fff3b0'; ctx.fillRect(ox + 3, oy + 3, 10, 10);
-    ctx.fillStyle = '#ffffff'; ctx.fillRect(ox + 6, oy + 6, 4, 4);
-    ctx.fillStyle = '#ffb020';
-    ctx.fillRect(ox, oy + 7, 2, 2); ctx.fillRect(ox + 14, oy + 7, 2, 2);
-    ctx.fillRect(ox + 7, oy, 2, 2); ctx.fillRect(ox + 7, oy + 14, 2, 2);
-  },
-  [T.BEDROCK](ctx, ox, oy, rand) {
-    pxFill(ctx, ox, oy, 16, 16, '#3a3a3e');
-    for (let i = 0; i < 10; i++) {
-      const x = (rand() * 16) | 0, y = (rand() * 16) | 0;
-      ctx.fillStyle = rand() < 0.5 ? '#1f1f22' : '#5c5c64'; ctx.fillRect(ox + x, oy + y, 2 + (rand() * 2) | 0, 2);
-    }
-  },
-  [T.SAND](ctx, ox, oy, rand) { speckle(ctx, ox, oy, '#dbcf8f', 24, rand); },
-  [T.WATER](ctx, ox, oy, rand) {
-    ctx.globalAlpha = 0.62;
-    pxFill(ctx, ox, oy, 16, 16, '#2a5bc0');
-    for (let i = 0; i < 8; i++) px(ctx, ox + (rand() * 16) | 0, oy + (rand() * 16) | 0, '#3a6bd0');
-    ctx.globalAlpha = 1;
-  },
-};
-// --- Minecraft-style ores: stone base + 3-5 dark/light fleck clusters ---
-function orePainter(fleck) {
-  return (ctx, ox, oy, rand) => {
-    painters[T.STONE](ctx, ox, oy, rand);
-    for (let c = 0; c < 3 + (rand() * 3) | 0; c++) {
-      const cx = 1 + (rand() * 13) | 0, cy = 1 + (rand() * 13) | 0;
-      ctx.fillStyle = fleck;
-      ctx.fillRect(ox + cx, oy + cy, 2 + (rand() * 2) | 0, 2);
-      if (rand() < 0.5) px(ctx, ox + cx + 1, oy + cy - 1, fleck);
-    }
+// Blit a vanilla 16x16 RGBA tile at (ox, oy). Same contract as the old
+// procedural painters; padTile() reads the result back and rings it.
+const painters = {};
+for (const id in VANILLA_BY_TILE) {
+  painters[id] = (ctx, ox, oy) => {
+    const img = new ImageData(new Uint8ClampedArray(VANILLA[id]), 16, 16);
+    ctx.putImageData(img, ox, oy);
   };
 }
-painters[T.COAL_ORE] = orePainter('#141414');
-painters[T.IRON_ORE] = orePainter('#d8af93');
-painters[T.COPPER_ORE] = orePainter('#c46e3c');
-painters[T.GOLD_ORE] = orePainter('#fcee4b');
-painters[T.DIAMOND_ORE] = orePainter('#53ecee');
 
 // --- anti-bleed padded atlas ---
 // Tiles are painted into a (16 + 2*PAD) px cell, then a 2px RING around each
 // tile is filled with a replicate of the tile's own edge row/col. With NEAREST
 // filtering, a fragment whose UV lands on (or just outside) a tile boundary
-// reads that tile's replicated edge — never a neighbor tile and never the
+// reads that tile's replicated edge - never a neighbor tile and never the
 // transparent-black canvas. This is scale-independent: it works at every
 // distance, not just "inset is big enough today". PAD is the safe margin.
 const PAD = 2;
@@ -441,11 +388,10 @@ function buildAtlas() {
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = ATLAS;
   const ctx = canvas.getContext('2d');
-  const rand = mulberry32(0xC0FFEE);
   for (const id in painters) {
     const ox = (id % 8) * CELL + PAD;      // paint the 16x16 centered in its cell
     const oy = ((id / 8) | 0) * CELL + PAD;
-    painters[id](ctx, ox, oy, rand);
+    painters[id](ctx, ox, oy);
     padTile(ctx, ox, oy);
   }
   return canvas;
@@ -476,7 +422,7 @@ function padTile(ctx, ox, oy) {
 
 // UVs for tile `t` inside the padded 8x8 atlas. Map exactly to the inner 16x16
 // region; the surrounding 2px replicate ring is the free safety margin, so no
-// extra inset is needed (and none is wanted — an inset would shrink the tile).
+// extra inset is needed (and none is wanted - an inset would shrink the tile).
 function tileUV(t) {
   const x0 = (t % 8) * CELL + PAD, y0 = ((t / 8) | 0) * CELL + PAD;
   return [x0 / ATLAS, y0 / ATLAS, (x0 + 16) / ATLAS, (y0 + 16) / ATLAS];
@@ -907,7 +853,7 @@ function buildChunkMesh(world, cx, cz, light) {
             pos.push(x + cor[0], y + cor[1], z + cor[2]);
             const [uu, vv] = uvs[c];
             uv.push(u0 + (u1 - u0) * uu, v0 + (v1 - v0) * vv);
-            meta.push(aoFor(world, x, y, z, face, cor), face.shade, def.glow ? 1 : 0, ...vertexLight(world, light, x, y, z, cor, def.glow));
+            meta.push(aoFor(world, x, y, z, face, cor), face.shade, def.glow ? 1 : 0, ...vertexLight(world, light, x, y, z, face, cor, def.glow));
           }
           idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
         }
@@ -940,11 +886,18 @@ function heightAtCol(world, x, z) {
   return heightAt(x, z); // analytic terrain height (water check only, edits irrelevant)
 }
 
-// per-vertex light sample: the cell the vertex sits in (light is stored per cell;
-// sampling the adjacent cell gives the MC-style gradient across a face).
+// per-vertex light sample: the AIR CELL the face is exposed to (block + normal),
+// offset in the tangent plane by the corner for the MC-style per-corner gradient.
+// (Sampling the raw vertex position is wrong for negative-normal faces: the corner
+// offset along the normal is 0 there, so the vertex sits inside the opaque block,
+// whose stored light is 0 -> those faces rendered black.)
 // Emissive blocks clamp block light to full so their faces always read as sources.
-function vertexLight(world, light, x, y, z, cor, isGlow) {
-  const [s, b] = light ? light(x + cor[0], y + cor[1], z + cor[2]) : [15, 0];
+function vertexLight(world, light, x, y, z, face, cor, isGlow) {
+  const n = face.n;
+  const sx = x + n[0] + (n[0] === 0 ? cor[0] : 0);
+  const sy = y + n[1] + (n[1] === 0 ? cor[1] : 0);
+  const sz = z + n[2] + (n[2] === 0 ? cor[2] : 0);
+  const [s, b] = light ? light(sx, sy, sz) : [15, 0];
   const bb = isGlow ? Math.max(b, 15) : b;
   return [s / 15, bb / 15];
 }
@@ -997,8 +950,9 @@ void main() {
   float ao = vMeta.x, shade = vMeta.y, emis = vMeta.z;
   float sky = vLight.x, blk = vLight.y;
   // MC-style brightness: max(day-dimmed skylight, block light). Moonlight keeps
-  // the surface dimly readable at night; block light is day/night independent.
-  float light = max(sky * mix(0.12, 1.0, uDay), blk);
+  // the surface dimly but clearly readable at night (floor 0.30); block light is
+  // day/night independent.
+  float light = max(sky * mix(0.30, 1.0, uDay), blk);
   vec3 sunCol = mix(vec3(1.0, 0.82, 0.62), vec3(1.08, 1.02, 0.95), uDay);
   vec3 col = tex.rgb * sunCol * light * shade * ao;
   // warm add so glowstone reads hot against its own faces (subtle MC-style pulse)
@@ -1015,6 +969,36 @@ void main() {
   vColor = aColor;
   vec4 w = uModel * vec4(aPos, 1.0); vWorld = w.xyz;
   gl_Position = uVP * w;
+}`;
+
+// entities: per-vertex swing pivot + amplitude + swell. Swing rotates each limb
+// about its pivot (top) by aSwing*uSwing around local Z (front-back); swell scales
+// the part about its pivot by aSwell*uSwell (creeper fuse puff). Per-face color
+// lets head/torso/limbs/face read as distinct parts (vanilla mob look).
+const VS_ENT = `
+attribute vec3 aPos; attribute vec3 aColor; attribute vec3 aPivot; attribute float aSwing; attribute float aSwell;
+uniform mat4 uVP; uniform mat4 uModel; uniform float uSwing; uniform float uSwell;
+varying vec3 vColor; varying vec3 vWorld;
+void main() {
+  vColor = aColor;
+  vec3 d = aPos - aPivot;
+  float a = aSwing * uSwing;
+  float c = cos(a), s = sin(a);
+  d = vec3(d.x, c * d.y - s * d.z, s * d.y + c * d.z); // rotate about local X (front-back swing)
+  d *= (1.0 + aSwell * uSwell);
+  vec4 w = uModel * vec4(aPivot + d, 1.0); vWorld = w.xyz;
+  gl_Position = uVP * w;
+}`;
+
+const FS_ENT = `
+precision highp float;
+varying vec3 vColor; varying vec3 vWorld;
+uniform float uDay; uniform float uSwell;
+void main() {
+  vec3 sunCol = mix(vec3(1.0, 0.82, 0.62), vec3(1.08, 1.02, 0.95), uDay);
+  float light = mix(0.36, 0.95, uDay);
+  vec3 col = mix(vColor, vec3(1.0), uSwell * 0.65) * sunCol * light;
+  gl_FragColor = vec4(col, 1.0);
 }`;
 
 const FS_SOLID = `
@@ -1099,7 +1083,11 @@ class Game {
 
   initGL() {
     const c = this.canvas;
-    let gl = c.getContext('webgl', { antialias: false, depth: true });
+    // testMode: preserveDrawingBuffer so the WS3 probe's readPixels sees the
+    // frame it just rendered (default false = buffer cleared after compositing,
+    // which reads back black and made the distance rows fail). Production keeps
+    // the fast default.
+    let gl = c.getContext('webgl', { antialias: false, depth: true, preserveDrawingBuffer: this.testMode });
     if (!gl) gl = c.getContext('experimental-webgl', { antialias: false });
     if (!gl) { this.fail('no WebGL context'); return false; }
     this.gl = gl;
@@ -1110,6 +1098,7 @@ class Game {
 
     this.progWorld = makeProgram(gl, VS_WORLD, FS_WORLD);
     this.progSolid = makeProgram(gl, VS_SOLID, FS_SOLID);
+    this.progEnt = makeProgram(gl, VS_ENT, FS_ENT);
     this.progSky = makeProgram(gl, FS_SKY_VS, FS_SKY);
 
     // atlas
@@ -1158,6 +1147,10 @@ class Game {
     return { vbo, count: 24 };
   }
 
+  // Entity geometry: 24 verts/part (6 faces x 4), 12 floats each:
+  // pos(3) color(3) pivot(3) swing(1) swell(1). Swing pivots each limb at its
+  // top (aSwing rotates about aPivot in the vertex shader, front-back axis);
+  // swell scales a part about its pivot (creeper fuse puff). faces: [px,nx,py,ny,pz,nz].
   buildEntityGeo(parts) {
     const gl = this.gl;
     const V = [], idx = [];
@@ -1172,12 +1165,14 @@ class Game {
     ];
     for (const part of parts) {
       const c = part.color;
-      for (const face of faces) {
-        for (const p of face) {
-          V.push((part.ox || 0) + p[0] * (part.sx || 1) * 0.5,
-                 (part.oy || 0) + p[1] * (part.sy || 1) * 0.5,
-                 (part.oz || 0) + p[2] * (part.sz || 1) * 0.5,
-                 c[0], c[1], c[2]);
+      const sw = part.swing || 0, swell = part.swell || 0;
+      const piv = part.pivot || [part.ox || 0, part.oy || 0, part.oz || 0];
+      for (let f = 0; f < 6; f++) {
+        for (const p of faces[f]) {
+          const px = (part.ox || 0) + p[0] * (part.sx || 1) * 0.5;
+          const py = (part.oy || 0) + p[1] * (part.sy || 1) * 0.5;
+          const pz = (part.oz || 0) + p[2] * (part.sz || 1) * 0.5;
+          V.push(px, py, pz, c[0], c[1], c[2], piv[0], piv[1], piv[2], sw, swell);
         }
         const b = vi;
         idx.push(b, b + 1, b + 2, b, b + 2, b + 3);
@@ -1190,7 +1185,7 @@ class Game {
     const ibo = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl.STATIC_DRAW);
-    return { vbo, ibo, count: idx.length };
+    return { vbo, ibo, count: idx.length, nverts: vi };
   }
 
   // ---------- mesh management ----------
@@ -1494,6 +1489,8 @@ class Game {
       state: 'idle', timer: 2 + Math.random() * 4,
       health: type === 'zombie' ? 4 : 2,
       fuse: -1, hitCd: 0,
+      phase: Math.random() * Math.PI * 2, // walk-cycle offset so mobs don't sync
+      swell: 0, // creeper fuse puff (0..1); others stay 0
     };
   }
 
@@ -1536,6 +1533,7 @@ class Game {
         if (dist < 2.2 && e.fuse < 0) { e.fuse = 1.2; this.sfx('hiss'); }
         if (e.fuse >= 0) {
           e.fuse -= dt; e.vel[0] = 0; e.vel[2] = 0;
+          e.swell = Math.min(1, Math.max(0, 1 - e.fuse / 1.2)); // 0→1 as the fuse burns
           if (e.fuse <= 0) {
             this.explode(e.pos[0], e.pos[1] + 0.5, e.pos[2], 3.2);
             this.entities.splice(i, 1);
@@ -1545,6 +1543,8 @@ class Game {
       }
 
       e.vel[1] -= 24 * dt;
+      const hs = Math.hypot(e.vel[0], e.vel[2]); // horizontal speed
+      if (hs > 0.15) e.phase += dt * hs * 5.0; // walk-cycle advances with speed
       e.pos[0] += e.vel[0] * dt;
       e.pos[1] += e.vel[1] * dt;
       e.pos[2] += e.vel[2] * dt;
@@ -1654,6 +1654,16 @@ class Game {
     this.player.pitch = Math.max(-1.5, Math.min(1.5, this.player.pitch));
   }
 
+  // Per-entity limb-swing angle (radians) for the render path AND the test
+  // harness (they must agree — same source of truth). One walk frequency for a
+  // mob; each swinging limb scales/flips it via its part `swing` (+1 forward,
+  // -1 opposite phase so a zombie's arms and legs alternate naturally).
+  entSwing(e) {
+    const hs = Math.hypot(e.vel[0], e.vel[2]);
+    if (hs <= 0.15) return 0; // standing still — limbs rest
+    return 0.6 * Math.sin(e.phase);
+  }
+
   // ---------- render ----------
   render(now) {
     const gl = this.gl;
@@ -1755,23 +1765,39 @@ class Game {
     gl.disable(gl.BLEND);
 
     // entities
-    gl.useProgram(this.progSolid.prog);
-    gl.uniformMatrix4fv(this.progSolid.u('uVP'), false, vp);
-    gl.uniform1f(this.progSolid.u('uDay'), day);
-    const sPos = this.progSolid.a('aPos'), sCol = this.progSolid.a('aColor');
+    gl.useProgram(this.progEnt.prog);
+    gl.uniformMatrix4fv(this.progEnt.u('uVP'), false, vp);
+    gl.uniform1f(this.progEnt.u('uDay'), day);
+    const ePos = this.progEnt.a('aPos'), eCol = this.progEnt.a('aColor'), ePiv = this.progEnt.a('aPivot'), eSw = this.progEnt.a('aSwing'), eSwl = this.progEnt.a('aSwell');
+    const bindEnt = (geo) => {
+      gl.bindBuffer(gl.ARRAY_BUFFER, geo.vbo);
+      gl.enableVertexAttribArray(ePos); gl.vertexAttribPointer(ePos, 3, gl.FLOAT, false, 48, 0);
+      gl.enableVertexAttribArray(eCol); gl.vertexAttribPointer(eCol, 3, gl.FLOAT, false, 48, 12);
+      gl.enableVertexAttribArray(ePiv); gl.vertexAttribPointer(ePiv, 3, gl.FLOAT, false, 48, 24);
+      gl.enableVertexAttribArray(eSw);  gl.vertexAttribPointer(eSw, 1, gl.FLOAT, false, 48, 36);
+      gl.enableVertexAttribArray(eSwl); gl.vertexAttribPointer(eSwl, 1, gl.FLOAT, false, 48, 40);
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, geo.ibo);
+    };
     for (const e of this.entities) {
       const geo = this._entGeo[e.type];
       if (!geo) continue;
       const cos = Math.cos(e.yaw), sin = Math.sin(e.yaw);
       const ry = M4.identity();
-      ry[0] = cos; ry[2] = -sin; ry[8] = sin; ry[10] = cos;
-      const t = M4.identity(); t[12] = e.pos[0]; t[13] = e.pos[1]; t[14] = e.pos[2];
+      // local +z (the face) maps to world (sin, 0, cos) = the movement
+      // direction, so each mob's face leads where it walks (was mirrored before,
+      // which only ever showed up now that mobs have faces).
+      ry[0] = cos; ry[2] = sin; ry[8] = -sin; ry[10] = cos;
+      // body bob: a subtle vertical hop on the walk cycle (quadrupeds bob the
+      // body; creepers have no legs so their body is steady, only the swell).
+      const hs = Math.hypot(e.vel[0], e.vel[2]);
+      const bob = (e.type === 'cow' || e.type === 'pig' || e.type === 'zombie') && hs > 0.15
+        ? 0.04 * Math.abs(Math.sin(e.phase)) : 0;
+      const t = M4.identity(); t[12] = e.pos[0]; t[13] = e.pos[1] + bob; t[14] = e.pos[2];
       const model = M4.mul(t, ry);
-      gl.uniformMatrix4fv(this.progSolid.u('uModel'), false, model);
-      gl.bindBuffer(gl.ARRAY_BUFFER, geo.vbo);
-      gl.enableVertexAttribArray(sPos); gl.vertexAttribPointer(sPos, 3, gl.FLOAT, false, 24, 0);
-      gl.enableVertexAttribArray(sCol); gl.vertexAttribPointer(sCol, 3, gl.FLOAT, false, 24, 12);
-      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, geo.ibo);
+      gl.uniformMatrix4fv(this.progEnt.u('uModel'), false, model);
+      gl.uniform1f(this.progEnt.u('uSwing'), this.entSwing(e));
+      gl.uniform1f(this.progEnt.u('uSwell'), e.swell || 0);
+      bindEnt(geo);
       gl.drawElements(gl.TRIANGLES, geo.count, gl.UNSIGNED_SHORT, 0);
     }
 
@@ -1782,11 +1808,15 @@ class Game {
     // bleeding").
     const hit = this.raycast();
     if (hit) {
+      gl.useProgram(this.progSolid.prog);
+      gl.uniformMatrix4fv(this.progSolid.u('uVP'), false, vp);
+      gl.uniform1f(this.progSolid.u('uDay'), day);
+      const hPos = this.progSolid.a('aPos'), hCol = this.progSolid.a('aColor');
       const t = M4.identity(); t[12] = hit.x + 0.5; t[13] = hit.y + 0.5; t[14] = hit.z + 0.5;
       gl.uniformMatrix4fv(this.progSolid.u('uModel'), false, t);
       gl.bindBuffer(gl.ARRAY_BUFFER, this._boxGeo.vbo);
-      gl.enableVertexAttribArray(sPos); gl.vertexAttribPointer(sPos, 3, gl.FLOAT, false, 24, 0);
-      gl.enableVertexAttribArray(sCol); gl.vertexAttribPointer(sCol, 3, gl.FLOAT, false, 24, 12);
+      gl.enableVertexAttribArray(hPos); gl.vertexAttribPointer(hPos, 3, gl.FLOAT, false, 24, 0);
+      gl.enableVertexAttribArray(hCol); gl.vertexAttribPointer(hCol, 3, gl.FLOAT, false, 24, 12);
       gl.drawArrays(gl.LINES, 0, this._boxGeo.count);
     }
 
@@ -2249,44 +2279,84 @@ class Game {
   }
 }
 
-// entity part tables: {ox,oy,oz center offsets; sx,sy,sz sizes; color rgb 0-1}
-// Y dims are vanilla-scaled so each mob's head-top matches its MC hitbox height
-// (cow 1.4, pig 0.9, zombie 1.975, creeper 1.7). Feet stay grounded.
+// entity part tables — vanilla-scaled (head-top matches the MC hitbox height;
+// feet grounded). Local axes: +x = right, +z = forward (the face). A part swings
+// about `pivot` (its top) when `swing` != 0 (front-back walk); `swell` scales it
+// about the pivot on the creeper fuse puff.
 const C = (r, g, b) => [r, g, b];
 const COW_PARTS = [
+  // body (brown) with white belly patch on the +z side
   { ox: 0, oy: 0.592, oz: 0, sx: 0.9, sy: 0.754, sz: 1.3, color: C(0.54, 0.35, 0.20) },
-  { ox: 0, oy: 0.668, oz: -0.45, sx: 0.7, sy: 0.485, sz: 0.5, color: C(0.96, 0.94, 0.90) },
-  { ox: 0, oy: 1.131, oz: 0.75, sx: 0.5, sy: 0.538, sz: 0.5, color: C(0.54, 0.35, 0.20) },
-  { ox: -0.28, oy: 0.194, oz: -0.4, sx: 0.16, sy: 0.431, sz: 0.16, color: C(0.35, 0.22, 0.14) },
-  { ox: 0.28, oy: 0.194, oz: -0.4, sx: 0.16, sy: 0.431, sz: 0.16, color: C(0.35, 0.22, 0.14) },
-  { ox: -0.28, oy: 0.194, oz: 0.4, sx: 0.16, sy: 0.431, sz: 0.16, color: C(0.35, 0.22, 0.14) },
-  { ox: 0.28, oy: 0.194, oz: 0.4, sx: 0.16, sy: 0.431, sz: 0.16, color: C(0.35, 0.22, 0.14) },
+  { ox: 0, oy: 0.5, oz: 0.62, sx: 0.55, sy: 0.5, sz: 0.06, color: C(0.96, 0.94, 0.90) },
+  // head: white face, brown crown
+  { ox: 0, oy: 1.131, oz: 0.75, sx: 0.5, sy: 0.538, sz: 0.5, color: C(0.96, 0.94, 0.90),
+    faceColors: [null, null, C(0.54, 0.35, 0.20), null, null, null] },
+  // eyes (dark) on the face
+  { ox: -0.11, oy: 1.18, oz: 1.01, sx: 0.06, sy: 0.09, sz: 0.02, color: C(0.12, 0.09, 0.07) },
+  { ox: 0.11, oy: 1.18, oz: 1.01, sx: 0.06, sy: 0.09, sz: 0.02, color: C(0.12, 0.09, 0.07) },
+  // snout + nostrils
+  { ox: 0, oy: 0.98, oz: 1.0, sx: 0.3, sy: 0.17, sz: 0.08, color: C(0.90, 0.86, 0.82) },
+  { ox: -0.07, oy: 0.98, oz: 1.05, sx: 0.05, sy: 0.05, sz: 0.02, color: C(0.35, 0.24, 0.18) },
+  { ox: 0.07, oy: 0.98, oz: 1.05, sx: 0.05, sy: 0.05, sz: 0.02, color: C(0.35, 0.24, 0.18) },
+  // four legs (darker brown), alternating swing
+  { ox: -0.28, oy: 0.194, oz: -0.4, sx: 0.16, sy: 0.431, sz: 0.16, color: C(0.42, 0.27, 0.15), swing: 1, pivot: [0, 0.339, 0] },
+  { ox: 0.28, oy: 0.194, oz: -0.4, sx: 0.16, sy: 0.431, sz: 0.16, color: C(0.42, 0.27, 0.15), swing: -1, pivot: [0, 0.339, 0] },
+  { ox: -0.28, oy: 0.194, oz: 0.4, sx: 0.16, sy: 0.431, sz: 0.16, color: C(0.42, 0.27, 0.15), swing: -1, pivot: [0, 0.339, 0] },
+  { ox: 0.28, oy: 0.194, oz: 0.4, sx: 0.16, sy: 0.431, sz: 0.16, color: C(0.42, 0.27, 0.15), swing: 1, pivot: [0, 0.339, 0] },
 ];
 const PIG_PARTS = [
+  // body (pink)
   { ox: 0, oy: 0.429, oz: 0, sx: 0.7, sy: 0.471, sz: 1.1, color: C(0.94, 0.63, 0.69) },
+  // head
   { ox: 0, oy: 0.729, oz: 0.6, sx: 0.45, sy: 0.343, sz: 0.4, color: C(0.94, 0.63, 0.69) },
+  // snout (darker) + two nostrils
   { ox: 0, oy: 0.686, oz: 0.85, sx: 0.2, sy: 0.129, sz: 0.15, color: C(0.82, 0.5, 0.56) },
-  { ox: -0.2, oy: 0.137, oz: -0.3, sx: 0.14, sy: 0.300, sz: 0.14, color: C(0.82, 0.5, 0.56) },
-  { ox: 0.2, oy: 0.137, oz: -0.3, sx: 0.14, sy: 0.300, sz: 0.14, color: C(0.82, 0.5, 0.56) },
-  { ox: -0.2, oy: 0.137, oz: 0.3, sx: 0.14, sy: 0.300, sz: 0.14, color: C(0.82, 0.5, 0.56) },
-  { ox: 0.2, oy: 0.137, oz: 0.3, sx: 0.14, sy: 0.300, sz: 0.14, color: C(0.82, 0.5, 0.56) },
+  { ox: -0.05, oy: 0.69, oz: 0.93, sx: 0.035, sy: 0.04, sz: 0.02, color: C(0.55, 0.32, 0.36) },
+  { ox: 0.05, oy: 0.69, oz: 0.93, sx: 0.035, sy: 0.04, sz: 0.02, color: C(0.55, 0.32, 0.36) },
+  // eyes
+  { ox: -0.13, oy: 0.78, oz: 0.81, sx: 0.05, sy: 0.06, sz: 0.02, color: C(0.12, 0.09, 0.07) },
+  { ox: 0.13, oy: 0.78, oz: 0.81, sx: 0.05, sy: 0.06, sz: 0.02, color: C(0.12, 0.09, 0.07) },
+  // curly tail (tiny)
+  { ox: 0, oy: 0.5, oz: -0.56, sx: 0.05, sy: 0.08, sz: 0.05, color: C(0.82, 0.5, 0.56) },
+  // four legs
+  { ox: -0.2, oy: 0.137, oz: -0.3, sx: 0.14, sy: 0.300, sz: 0.14, color: C(0.82, 0.5, 0.56), swing: 1, pivot: [0, 0.229, 0] },
+  { ox: 0.2, oy: 0.137, oz: -0.3, sx: 0.14, sy: 0.300, sz: 0.14, color: C(0.82, 0.5, 0.56), swing: -1, pivot: [0, 0.229, 0] },
+  { ox: -0.2, oy: 0.137, oz: 0.3, sx: 0.14, sy: 0.300, sz: 0.14, color: C(0.82, 0.5, 0.56), swing: -1, pivot: [0, 0.229, 0] },
+  { ox: 0.2, oy: 0.137, oz: 0.3, sx: 0.14, sy: 0.300, sz: 0.14, color: C(0.82, 0.5, 0.56), swing: 1, pivot: [0, 0.229, 0] },
 ];
 const ZOMBIE_PARTS = [
-  { ox: 0, oy: 0.969, oz: 0, sx: 0.5, sy: 1.024, sz: 0.35, color: C(0.16, 0.54, 0.29) },
+  // body: light-blue shirt
+  { ox: 0, oy: 0.969, oz: 0, sx: 0.5, sy: 1.024, sz: 0.35, color: C(0.40, 0.70, 0.85) },
+  // head: green
   { ox: 0, oy: 1.693, oz: 0, sx: 0.4, sy: 0.585, sz: 0.4, color: C(0.23, 0.63, 0.35) },
-  { ox: 0, oy: 1.765, oz: 0.2, sx: 0.3, sy: 0.117, sz: 0.05, color: C(0.1, 0.35, 0.16) },
-  { ox: 0, oy: 0.458, oz: 0, sx: 0.22, sy: 0.878, sz: 0.3, color: C(0.1, 0.35, 0.16) },
-  { ox: -0.35, oy: 1.336, oz: 0.2, sx: 0.15, sy: 0.731, sz: 0.2, color: C(0.23, 0.63, 0.35) },
-  { ox: 0.35, oy: 1.336, oz: 0.2, sx: 0.15, sy: 0.731, sz: 0.2, color: C(0.23, 0.63, 0.35) },
+  // eyes (dark)
+  { ox: -0.08, oy: 1.74, oz: 0.21, sx: 0.07, sy: 0.06, sz: 0.02, color: C(0.08, 0.08, 0.08) },
+  { ox: 0.08, oy: 1.74, oz: 0.21, sx: 0.07, sy: 0.06, sz: 0.02, color: C(0.08, 0.08, 0.08) },
+  // mouth (dark)
+  { ox: 0, oy: 1.6, oz: 0.21, sx: 0.12, sy: 0.05, sz: 0.02, color: C(0.08, 0.08, 0.08) },
+  // legs: blue pants
+  { ox: -0.13, oy: 0.458, oz: 0, sx: 0.2, sy: 0.878, sz: 0.28, color: C(0.20, 0.28, 0.55), swing: 1, pivot: [0, 0.897, 0] },
+  { ox: 0.13, oy: 0.458, oz: 0, sx: 0.2, sy: 0.878, sz: 0.28, color: C(0.20, 0.28, 0.55), swing: -1, pivot: [0, 0.897, 0] },
+  // arms: green, held forward (zombie signature)
+  { ox: -0.35, oy: 1.336, oz: 0.2, sx: 0.15, sy: 0.731, sz: 0.2, color: C(0.23, 0.63, 0.35), swing: 0.4, pivot: [0, 1.701, 0] },
+  { ox: 0.35, oy: 1.336, oz: 0.2, sx: 0.15, sy: 0.731, sz: 0.2, color: C(0.23, 0.63, 0.35), swing: 0.4, pivot: [0, 1.701, 0] },
 ];
 const CREEPER_PARTS = [
-  { ox: 0, oy: 0.706, oz: 0, sx: 0.4, sy: 1.155, sz: 0.4, color: C(0.23, 0.63, 0.16) },
-  { ox: 0, oy: 1.475, oz: 0, sx: 0.35, sy: 0.449, sz: 0.35, color: C(0.23, 0.63, 0.16) },
+  // body (green) — swells on the fuse
+  { ox: 0, oy: 0.706, oz: 0, sx: 0.4, sy: 1.155, sz: 0.4, color: C(0.23, 0.63, 0.16), swell: 0.5 },
+  // head
+  { ox: 0, oy: 1.475, oz: 0, sx: 0.35, sy: 0.449, sz: 0.35, color: C(0.23, 0.63, 0.16), swell: 0.5 },
+  // face (black) — eyes + the frown mouth on the +z face
   { ox: 0, oy: 1.540, oz: 0.18, sx: 0.25, sy: 0.192, sz: 0.05, color: C(0.07, 0.07, 0.07) },
-  { ox: -0.2, oy: 0.192, oz: -0.15, sx: 0.15, sy: 0.449, sz: 0.15, color: C(0.23, 0.63, 0.16) },
-  { ox: 0.2, oy: 0.192, oz: -0.15, sx: 0.15, sy: 0.449, sz: 0.15, color: C(0.23, 0.63, 0.16) },
-  { ox: -0.2, oy: 0.192, oz: 0.15, sx: 0.15, sy: 0.449, sz: 0.15, color: C(0.23, 0.63, 0.16) },
-  { ox: 0.2, oy: 0.192, oz: 0.15, sx: 0.15, sy: 0.449, sz: 0.15, color: C(0.23, 0.63, 0.16) },
+  // mouth frown: a wide bar with two legs dropping (reads as the creeper frown)
+  { ox: 0, oy: 1.44, oz: 0.18, sx: 0.14, sy: 0.05, sz: 0.05, color: C(0.07, 0.07, 0.07) },
+  { ox: -0.05, oy: 1.36, oz: 0.18, sx: 0.05, sy: 0.1, sz: 0.05, color: C(0.07, 0.07, 0.07) },
+  { ox: 0.05, oy: 1.36, oz: 0.18, sx: 0.05, sy: 0.1, sz: 0.05, color: C(0.07, 0.07, 0.07) },
+  // four legs — swells on the fuse, subtle step swing
+  { ox: -0.2, oy: 0.192, oz: -0.15, sx: 0.15, sy: 0.449, sz: 0.15, color: C(0.23, 0.63, 0.16), swell: 0.5, swing: 0.3, pivot: [0, 0.416, 0] },
+  { ox: 0.2, oy: 0.192, oz: -0.15, sx: 0.15, sy: 0.449, sz: 0.15, color: C(0.23, 0.63, 0.16), swell: 0.5, swing: -0.3, pivot: [0, 0.416, 0] },
+  { ox: -0.2, oy: 0.192, oz: 0.15, sx: 0.15, sy: 0.449, sz: 0.15, color: C(0.23, 0.63, 0.16), swell: 0.5, swing: -0.3, pivot: [0, 0.416, 0] },
+  { ox: 0.2, oy: 0.192, oz: 0.15, sx: 0.15, sy: 0.449, sz: 0.15, color: C(0.23, 0.63, 0.16), swell: 0.5, swing: 0.3, pivot: [0, 0.416, 0] },
 ];
 
 </script>
