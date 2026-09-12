@@ -1770,12 +1770,15 @@ class Game {
     gl.uniform1f(this.progEnt.u('uDay'), day);
     const ePos = this.progEnt.a('aPos'), eCol = this.progEnt.a('aColor'), ePiv = this.progEnt.a('aPivot'), eSw = this.progEnt.a('aSwing'), eSwl = this.progEnt.a('aSwell');
     const bindEnt = (geo) => {
+      // stride 44: buildEntityGeo pushes 11 floats/vertex (pos3+col3+piv3+sw1+swell1).
+      // (was 48 — 4-byte overstride desynced every attribute from vertex 2 on:
+      //  the "black bleed" + rainbow-spike entities.)
       gl.bindBuffer(gl.ARRAY_BUFFER, geo.vbo);
-      gl.enableVertexAttribArray(ePos); gl.vertexAttribPointer(ePos, 3, gl.FLOAT, false, 48, 0);
-      gl.enableVertexAttribArray(eCol); gl.vertexAttribPointer(eCol, 3, gl.FLOAT, false, 48, 12);
-      gl.enableVertexAttribArray(ePiv); gl.vertexAttribPointer(ePiv, 3, gl.FLOAT, false, 48, 24);
-      gl.enableVertexAttribArray(eSw);  gl.vertexAttribPointer(eSw, 1, gl.FLOAT, false, 48, 36);
-      gl.enableVertexAttribArray(eSwl); gl.vertexAttribPointer(eSwl, 1, gl.FLOAT, false, 48, 40);
+      gl.enableVertexAttribArray(ePos); gl.vertexAttribPointer(ePos, 3, gl.FLOAT, false, 44, 0);
+      gl.enableVertexAttribArray(eCol); gl.vertexAttribPointer(eCol, 3, gl.FLOAT, false, 44, 12);
+      gl.enableVertexAttribArray(ePiv); gl.vertexAttribPointer(ePiv, 3, gl.FLOAT, false, 44, 24);
+      gl.enableVertexAttribArray(eSw);  gl.vertexAttribPointer(eSw, 1, gl.FLOAT, false, 44, 36);
+      gl.enableVertexAttribArray(eSwl); gl.vertexAttribPointer(eSwl, 1, gl.FLOAT, false, 44, 40);
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, geo.ibo);
     };
     for (const e of this.entities) {
