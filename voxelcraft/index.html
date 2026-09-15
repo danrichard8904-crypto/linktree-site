@@ -1164,10 +1164,14 @@ class Game {
       [[-1,-1,-1],[-1,-1,1],[-1,1,1],[-1,1,-1]],
     ];
     for (const part of parts) {
-      const c = part.color;
+      const fc = part.faces || part.faceColors;
       const sw = part.swing || 0, swell = part.swell || 0;
-      const piv = part.pivot || [part.ox || 0, part.oy || 0, part.oz || 0];
+      // pivot defaults to the part's own TOP center (a limb swings about its
+      // hip/shoulder, not the body axis — the old [0,y,0] pivots made limbs
+      // orbit the body center).
+      const piv = part.pivot || [part.ox || 0, (part.oy || 0) + (part.sy || 0) / 2, part.oz || 0];
       for (let f = 0; f < 6; f++) {
+        const c = (fc && fc[f]) || part.color;
         for (const p of faces[f]) {
           const px = (part.ox || 0) + p[0] * (part.sx || 1) * 0.5;
           const py = (part.oy || 0) + p[1] * (part.sy || 1) * 0.5;
@@ -1468,12 +1472,21 @@ class Game {
     const rand = mulberry32(0xBEEF);
     const put = (type, n) => {
       for (let i = 0; i < n; i++) {
-        const a = rand() * Math.PI * 2, r = 8 + rand() * 16;
-        const x = Math.round(p.spawn[0] + Math.cos(a) * r), z = Math.round(p.spawn[2] + Math.sin(a) * r);
-        if (isWaterCol(x, z)) continue;
-        const y = this.world.surfaceY(x, z) + 1;
-        if (y < 2 || y > HMAX - 8) continue;
-        this.entities.push(this.makeEntity(type, x + 0.5, y, z + 0.5));
+        // re-roll up to 24x for land: the spawn point sits at the water's edge,
+        // so a single ring sample frequently lands in water. The old code did
+        // `continue` on water/height and LOST that mob slot — which is why
+        // hostiles (4 of 4 on the water-side of the ring) never spawned and
+        // "both mob types always present" was false. Inner radius 8->6 so some
+        // mobs spawn close enough to actually be seen.
+        for (let attempt = 0; attempt < 24; attempt++) {
+          const a = rand() * Math.PI * 2, r = 6 + rand() * 18;
+          const x = Math.round(p.spawn[0] + Math.cos(a) * r), z = Math.round(p.spawn[2] + Math.sin(a) * r);
+          if (isWaterCol(x, z)) continue;
+          const y = this.world.surfaceY(x, z) + 1;
+          if (y < 2 || y > HMAX - 8) continue;
+          this.entities.push(this.makeEntity(type, x + 0.5, y, z + 0.5));
+          break;
+        }
       }
     };
     put('cow', 5); put('pig', 4);
@@ -1560,7 +1573,7 @@ class Game {
       if (dist > 48 || e.pos[1] < -10) this.entities.splice(i, 1);
     }
     // maintain animal population
-    const have = { cow: 0, pig: 0 };
+    const have = { cow: 0, pig: 0, zombie: 0, creeper: 0 };
     this.entities.forEach(e => { if (have[e.type] !== undefined) have[e.type]++; });
     for (const t of ['cow', 'pig']) {
       if (have[t] < 4 && this.entities.length < 18) {
@@ -1569,6 +1582,26 @@ class Game {
         if (!isWaterCol(x, z)) {
           const y = this.world.surfaceY(x, z) + 1;
           this.entities.push(this.makeEntity(t, x + 0.5, y, z + 0.5));
+        }
+      }
+    }
+    // maintain a hostile floor (the initial ring can lose hostiles to water, and
+    // culling at 48 blocks drains them over time — without this, "both mob
+    // types always present" decays to animals-only). Spawn 20–35 blocks out so
+    // they enter chase range (24) naturally instead of on top of the player.
+    if (!this.dead) {
+      const hostiles = [['zombie', 2], ['creeper', 2]];
+      for (const [t, floor] of hostiles) {
+        if (have[t] < floor && this.entities.length < 18) {
+          for (let attempt = 0; attempt < 8; attempt++) {
+            const a = Math.random() * Math.PI * 2, r = 20 + Math.random() * 15;
+            const x = Math.round(p.pos[0] + Math.cos(a) * r), z = Math.round(p.pos[2] + Math.sin(a) * r);
+            if (isWaterCol(x, z)) continue;
+            const y = this.world.surfaceY(x, z) + 1;
+            if (y < 2 || y > HMAX - 8) continue;
+            this.entities.push(this.makeEntity(t, x + 0.5, y, z + 0.5));
+            break;
+          }
         }
       }
     }
@@ -2282,84 +2315,151 @@ class Game {
   }
 }
 
-// entity part tables — vanilla-scaled (head-top matches the MC hitbox height;
-// feet grounded). Local axes: +x = right, +z = forward (the face). A part swings
-// about `pivot` (its top) when `swing` != 0 (front-back walk); `swell` scales it
-// about the pivot on the creeper fuse puff.
+// entity part tables — vanilla-scaled (feet grounded at y=0; head-top matches
+// the MC hitbox height). Local axes: +x = right, +z = forward (the face). A part
+// swings about `pivot` (default: its own TOP center) when `swing` != 0
+// (front-back walk); `swell` scales it about the pivot on the creeper fuse puff.
+// `faces: [px,nx,py,ny,pz,nz]` overrides the part color per face (null = default).
 const C = (r, g, b) => [r, g, b];
+const COW_BROWN = C(0.48, 0.32, 0.18), COW_DARK = C(0.34, 0.21, 0.12), COW_CREAM = C(0.94, 0.91, 0.85);
 const COW_PARTS = [
-  // body (brown) with white belly patch on the +z side
-  { ox: 0, oy: 0.592, oz: 0, sx: 0.9, sy: 0.754, sz: 1.3, color: C(0.54, 0.35, 0.20) },
-  { ox: 0, oy: 0.5, oz: 0.62, sx: 0.55, sy: 0.5, sz: 0.06, color: C(0.96, 0.94, 0.90) },
-  // head: white face, brown crown
-  { ox: 0, oy: 1.131, oz: 0.75, sx: 0.5, sy: 0.538, sz: 0.5, color: C(0.96, 0.94, 0.90),
-    faceColors: [null, null, C(0.54, 0.35, 0.20), null, null, null] },
-  // eyes (dark) on the face
-  { ox: -0.11, oy: 1.18, oz: 1.01, sx: 0.06, sy: 0.09, sz: 0.02, color: C(0.12, 0.09, 0.07) },
-  { ox: 0.11, oy: 1.18, oz: 1.01, sx: 0.06, sy: 0.09, sz: 0.02, color: C(0.12, 0.09, 0.07) },
-  // snout + nostrils
-  { ox: 0, oy: 0.98, oz: 1.0, sx: 0.3, sy: 0.17, sz: 0.08, color: C(0.90, 0.86, 0.82) },
-  { ox: -0.07, oy: 0.98, oz: 1.05, sx: 0.05, sy: 0.05, sz: 0.02, color: C(0.35, 0.24, 0.18) },
-  { ox: 0.07, oy: 0.98, oz: 1.05, sx: 0.05, sy: 0.05, sz: 0.02, color: C(0.35, 0.24, 0.18) },
-  // four legs (darker brown), alternating swing
-  { ox: -0.28, oy: 0.194, oz: -0.4, sx: 0.16, sy: 0.431, sz: 0.16, color: C(0.42, 0.27, 0.15), swing: 1, pivot: [0, 0.339, 0] },
-  { ox: 0.28, oy: 0.194, oz: -0.4, sx: 0.16, sy: 0.431, sz: 0.16, color: C(0.42, 0.27, 0.15), swing: -1, pivot: [0, 0.339, 0] },
-  { ox: -0.28, oy: 0.194, oz: 0.4, sx: 0.16, sy: 0.431, sz: 0.16, color: C(0.42, 0.27, 0.15), swing: -1, pivot: [0, 0.339, 0] },
-  { ox: 0.28, oy: 0.194, oz: 0.4, sx: 0.16, sy: 0.431, sz: 0.16, color: C(0.42, 0.27, 0.15), swing: 1, pivot: [0, 0.339, 0] },
+  // four legs (darker brown), diagonal-pair swing; pivot = leg top (hip).
+  // Legs overlap the body bottom by 0.05 (flush seams z-fight).
+  // swing 0.5 (was 1.0): 34° read as a splayed tripod mid-stride (audited
+  // 2026-09-15); 17° matches the vanilla cow's subtle shuffle.
+  { ox: -0.28, oy: 0.2125, oz: -0.45, sx: 0.18, sy: 0.425, sz: 0.18, color: COW_DARK, swing: 0.5 },
+  { ox: 0.28, oy: 0.2125, oz: -0.45, sx: 0.18, sy: 0.425, sz: 0.18, color: COW_DARK, swing: -0.5 },
+  { ox: -0.28, oy: 0.2125, oz: 0.45, sx: 0.18, sy: 0.425, sz: 0.18, color: COW_DARK, swing: -0.5 },
+  { ox: 0.28, oy: 0.2125, oz: 0.45, sx: 0.18, sy: 0.425, sz: 0.18, color: COW_DARK, swing: 0.5 },
+  // body (brown), mottled with darker patches
+  { ox: 0, oy: 0.6875, oz: 0, sx: 0.85, sy: 0.625, sz: 1.15, color: COW_BROWN },
+  { ox: -0.32, oy: 0.8, oz: 0.25, sx: 0.2, sy: 0.22, sz: 0.3, color: COW_DARK },
+  { ox: 0.3, oy: 0.58, oz: -0.3, sx: 0.24, sy: 0.2, sz: 0.34, color: COW_DARK },
+  { ox: 0.05, oy: 0.78, oz: 0.58, sx: 0.16, sy: 0.16, sz: 0.04, color: COW_DARK },
+  // cream side patches (the vanilla cow's big light flank blotches)
+  { ox: -0.43, oy: 0.7, oz: 0.1, sx: 0.02, sy: 0.42, sz: 0.7, color: COW_CREAM },
+  { ox: 0.43, oy: 0.7, oz: 0.1, sx: 0.02, sy: 0.42, sz: 0.7, color: COW_CREAM },
+  // head: brown crown, cream face (per-face); overlaps the body top by 0.05
+  { ox: 0, oy: 1.225, oz: 0.55, sx: 0.5, sy: 0.55, sz: 0.45, color: COW_BROWN,
+    faces: [null, null, null, null, COW_CREAM, null] },
+  { ox: -0.29, oy: 1.38, oz: 0.42, sx: 0.12, sy: 0.08, sz: 0.16, color: COW_DARK },
+  { ox: 0.29, oy: 1.38, oz: 0.42, sx: 0.12, sy: 0.08, sz: 0.16, color: COW_DARK },
+  { ox: -0.13, oy: 1.51, oz: 0.62, sx: 0.05, sy: 0.11, sz: 0.05, color: COW_CREAM },
+  { ox: 0.13, oy: 1.51, oz: 0.62, sx: 0.05, sy: 0.11, sz: 0.05, color: COW_CREAM },
+  // eyes + pale snout with nostrils (embedded in the face, never coplanar)
+  { ox: -0.12, oy: 1.3, oz: 0.79, sx: 0.06, sy: 0.08, sz: 0.02, color: C(0.12, 0.09, 0.07) },
+  { ox: 0.12, oy: 1.3, oz: 0.79, sx: 0.06, sy: 0.08, sz: 0.02, color: C(0.12, 0.09, 0.07) },
+  { ox: 0, oy: 1.1, oz: 0.775, sx: 0.34, sy: 0.17, sz: 0.08, color: C(0.90, 0.86, 0.82) },
+  { ox: -0.08, oy: 1.1, oz: 0.82, sx: 0.05, sy: 0.05, sz: 0.02, color: C(0.35, 0.24, 0.18) },
+  { ox: 0.08, oy: 1.1, oz: 0.82, sx: 0.05, sy: 0.05, sz: 0.02, color: C(0.35, 0.24, 0.18) },
+  // tail (thin, hangs from the rump)
+  { ox: 0, oy: 0.88, oz: -0.62, sx: 0.03, sy: 0.35, sz: 0.03, color: COW_DARK },
 ];
+const PIG_PINK = C(0.94, 0.63, 0.66), PIG_DARK = C(0.82, 0.47, 0.53);
 const PIG_PARTS = [
+  // four legs (darker pink). swing 0.5 (was 1.0): 34° splayed the stride
+  // (audited 2026-09-15); 17° matches the vanilla pig's short trot.
+  { ox: -0.18, oy: 0.15, oz: -0.32, sx: 0.16, sy: 0.3, sz: 0.16, color: PIG_DARK, swing: 0.5 },
+  { ox: 0.18, oy: 0.15, oz: -0.32, sx: 0.16, sy: 0.3, sz: 0.16, color: PIG_DARK, swing: -0.5 },
+  { ox: -0.18, oy: 0.15, oz: 0.32, sx: 0.16, sy: 0.3, sz: 0.16, color: PIG_DARK, swing: -0.5 },
+  { ox: 0.18, oy: 0.15, oz: 0.32, sx: 0.16, sy: 0.3, sz: 0.16, color: PIG_DARK, swing: 0.5 },
   // body (pink)
-  { ox: 0, oy: 0.429, oz: 0, sx: 0.7, sy: 0.471, sz: 1.1, color: C(0.94, 0.63, 0.69) },
-  // head
-  { ox: 0, oy: 0.729, oz: 0.6, sx: 0.45, sy: 0.343, sz: 0.4, color: C(0.94, 0.63, 0.69) },
-  // snout (darker) + two nostrils
-  { ox: 0, oy: 0.686, oz: 0.85, sx: 0.2, sy: 0.129, sz: 0.15, color: C(0.82, 0.5, 0.56) },
-  { ox: -0.05, oy: 0.69, oz: 0.93, sx: 0.035, sy: 0.04, sz: 0.02, color: C(0.55, 0.32, 0.36) },
-  { ox: 0.05, oy: 0.69, oz: 0.93, sx: 0.035, sy: 0.04, sz: 0.02, color: C(0.55, 0.32, 0.36) },
-  // eyes
-  { ox: -0.13, oy: 0.78, oz: 0.81, sx: 0.05, sy: 0.06, sz: 0.02, color: C(0.12, 0.09, 0.07) },
-  { ox: 0.13, oy: 0.78, oz: 0.81, sx: 0.05, sy: 0.06, sz: 0.02, color: C(0.12, 0.09, 0.07) },
-  // curly tail (tiny)
-  { ox: 0, oy: 0.5, oz: -0.56, sx: 0.05, sy: 0.08, sz: 0.05, color: C(0.82, 0.5, 0.56) },
-  // four legs
-  { ox: -0.2, oy: 0.137, oz: -0.3, sx: 0.14, sy: 0.300, sz: 0.14, color: C(0.82, 0.5, 0.56), swing: 1, pivot: [0, 0.229, 0] },
-  { ox: 0.2, oy: 0.137, oz: -0.3, sx: 0.14, sy: 0.300, sz: 0.14, color: C(0.82, 0.5, 0.56), swing: -1, pivot: [0, 0.229, 0] },
-  { ox: -0.2, oy: 0.137, oz: 0.3, sx: 0.14, sy: 0.300, sz: 0.14, color: C(0.82, 0.5, 0.56), swing: -1, pivot: [0, 0.229, 0] },
-  { ox: 0.2, oy: 0.137, oz: 0.3, sx: 0.14, sy: 0.300, sz: 0.14, color: C(0.82, 0.5, 0.56), swing: 1, pivot: [0, 0.229, 0] },
+  { ox: 0, oy: 0.525, oz: 0, sx: 0.65, sy: 0.45, sz: 1.0, color: PIG_PINK },
+  // head (pink) with ears
+  { ox: 0, oy: 0.62, oz: 0.52, sx: 0.4, sy: 0.4, sz: 0.4, color: PIG_PINK },
+  { ox: -0.14, oy: 0.86, oz: 0.42, sx: 0.09, sy: 0.11, sz: 0.13, color: PIG_DARK },
+  { ox: 0.14, oy: 0.86, oz: 0.42, sx: 0.09, sy: 0.11, sz: 0.13, color: PIG_DARK },
+  // white eyes + dark pupils
+  { ox: -0.12, oy: 0.68, oz: 0.725, sx: 0.07, sy: 0.08, sz: 0.02, color: C(0.97, 0.97, 0.97) },
+  { ox: 0.12, oy: 0.68, oz: 0.725, sx: 0.07, sy: 0.08, sz: 0.02, color: C(0.97, 0.97, 0.97) },
+  { ox: -0.12, oy: 0.68, oz: 0.745, sx: 0.03, sy: 0.05, sz: 0.02, color: C(0.12, 0.09, 0.07) },
+  { ox: 0.12, oy: 0.68, oz: 0.745, sx: 0.03, sy: 0.05, sz: 0.02, color: C(0.12, 0.09, 0.07) },
+  // snout (darker) with two nostrils
+  { ox: 0, oy: 0.55, oz: 0.73, sx: 0.24, sy: 0.14, sz: 0.08, color: PIG_DARK },
+  { ox: -0.06, oy: 0.55, oz: 0.775, sx: 0.04, sy: 0.06, sz: 0.02, color: C(0.5, 0.26, 0.3) },
+  { ox: 0.06, oy: 0.55, oz: 0.775, sx: 0.04, sy: 0.06, sz: 0.02, color: C(0.5, 0.26, 0.3) },
+  // curly tail (tiny nub)
+  { ox: 0, oy: 0.6, oz: -0.52, sx: 0.04, sy: 0.06, sz: 0.04, color: PIG_DARK },
 ];
+const Z_GREEN = C(0.5, 0.72, 0.4), Z_PURPLE = C(0.45, 0.3, 0.75), Z_BLUE = C(0.35, 0.55, 0.82);
 const ZOMBIE_PARTS = [
-  // body: light-blue shirt
-  { ox: 0, oy: 0.969, oz: 0, sx: 0.5, sy: 1.024, sz: 0.35, color: C(0.40, 0.70, 0.85) },
-  // head: green
-  { ox: 0, oy: 1.693, oz: 0, sx: 0.4, sy: 0.585, sz: 0.4, color: C(0.23, 0.63, 0.35) },
-  // eyes (dark)
-  { ox: -0.08, oy: 1.74, oz: 0.21, sx: 0.07, sy: 0.06, sz: 0.02, color: C(0.08, 0.08, 0.08) },
-  { ox: 0.08, oy: 1.74, oz: 0.21, sx: 0.07, sy: 0.06, sz: 0.02, color: C(0.08, 0.08, 0.08) },
-  // mouth (dark)
-  { ox: 0, oy: 1.6, oz: 0.21, sx: 0.12, sy: 0.05, sz: 0.02, color: C(0.08, 0.08, 0.08) },
-  // legs: blue pants
-  { ox: -0.13, oy: 0.458, oz: 0, sx: 0.2, sy: 0.878, sz: 0.28, color: C(0.20, 0.28, 0.55), swing: 1, pivot: [0, 0.897, 0] },
-  { ox: 0.13, oy: 0.458, oz: 0, sx: 0.2, sy: 0.878, sz: 0.28, color: C(0.20, 0.28, 0.55), swing: -1, pivot: [0, 0.897, 0] },
-  // arms: green, held forward (zombie signature)
-  { ox: -0.35, oy: 1.336, oz: 0.2, sx: 0.15, sy: 0.731, sz: 0.2, color: C(0.23, 0.63, 0.35), swing: 0.4, pivot: [0, 1.701, 0] },
-  { ox: 0.35, oy: 1.336, oz: 0.2, sx: 0.15, sy: 0.731, sz: 0.2, color: C(0.23, 0.63, 0.35), swing: 0.4, pivot: [0, 1.701, 0] },
+  // legs: light-blue pants; pivot = leg top (hip)
+  { ox: -0.125, oy: 0.375, oz: 0, sx: 0.25, sy: 0.75, sz: 0.25, color: Z_BLUE, swing: 1 },
+  { ox: 0.125, oy: 0.375, oz: 0, sx: 0.25, sy: 0.75, sz: 0.25, color: Z_BLUE, swing: -1 },
+  // body: purple shirt
+  { ox: 0, oy: 1.125, oz: 0, sx: 0.5, sy: 0.75, sz: 0.25, color: Z_PURPLE },
+  // head: green, dark hair crown (per-face top)
+  { ox: 0, oy: 1.75, oz: 0, sx: 0.5, sy: 0.5, sz: 0.5, color: Z_GREEN,
+    faces: [null, null, C(0.16, 0.11, 0.07), null, null, null] },
+  // eyes + mouth
+  { ox: -0.11, oy: 1.78, oz: 0.26, sx: 0.08, sy: 0.07, sz: 0.02, color: C(0.1, 0.1, 0.1) },
+  { ox: 0.11, oy: 1.78, oz: 0.26, sx: 0.08, sy: 0.07, sz: 0.02, color: C(0.1, 0.1, 0.1) },
+  { ox: 0, oy: 1.62, oz: 0.26, sx: 0.14, sy: 0.05, sz: 0.02, color: C(0.1, 0.1, 0.1) },
+  // arms: green, held FORWARD (zombie signature); pivot = shoulder (arm rear end)
+  { ox: -0.375, oy: 1.5, oz: 0.5, sx: 0.25, sy: 0.25, sz: 0.75, color: Z_GREEN, swing: 0.3, pivot: [-0.375, 1.5, 0.125] },
+  { ox: 0.375, oy: 1.5, oz: 0.5, sx: 0.25, sy: 0.25, sz: 0.75, color: Z_GREEN, swing: 0.3, pivot: [0.375, 1.5, 0.125] },
 ];
+const CR_GREEN = C(0.45, 0.72, 0.3), CR_MID = C(0.36, 0.64, 0.22), CR_DARK = C(0.28, 0.53, 0.18), CR_FACE = C(0.07, 0.07, 0.07);
+// Vanilla creeper grid (px -> blocks, 1px = 0.0625): head 8x8x8, body 8x12x4,
+// four legs 4x6x4 at the body corners; total 26px = 1.625 blocks. Legs fill the
+// body footprint (wide 4-foot base), body is FLAT (4px deep) — a creeper is a
+// thin slab, not a pillar.
 const CREEPER_PARTS = [
-  // body (green) — swells on the fuse
-  { ox: 0, oy: 0.706, oz: 0, sx: 0.4, sy: 1.155, sz: 0.4, color: C(0.23, 0.63, 0.16), swell: 0.5 },
-  // head
-  { ox: 0, oy: 1.475, oz: 0, sx: 0.35, sy: 0.449, sz: 0.35, color: C(0.23, 0.63, 0.16), swell: 0.5 },
-  // face (black) — eyes + the frown mouth on the +z face
-  { ox: 0, oy: 1.540, oz: 0.18, sx: 0.25, sy: 0.192, sz: 0.05, color: C(0.07, 0.07, 0.07) },
-  // mouth frown: a wide bar with two legs dropping (reads as the creeper frown)
-  { ox: 0, oy: 1.44, oz: 0.18, sx: 0.14, sy: 0.05, sz: 0.05, color: C(0.07, 0.07, 0.07) },
-  { ox: -0.05, oy: 1.36, oz: 0.18, sx: 0.05, sy: 0.1, sz: 0.05, color: C(0.07, 0.07, 0.07) },
-  { ox: 0.05, oy: 1.36, oz: 0.18, sx: 0.05, sy: 0.1, sz: 0.05, color: C(0.07, 0.07, 0.07) },
-  // four legs — swells on the fuse, subtle step swing
-  { ox: -0.2, oy: 0.192, oz: -0.15, sx: 0.15, sy: 0.449, sz: 0.15, color: C(0.23, 0.63, 0.16), swell: 0.5, swing: 0.3, pivot: [0, 0.416, 0] },
-  { ox: 0.2, oy: 0.192, oz: -0.15, sx: 0.15, sy: 0.449, sz: 0.15, color: C(0.23, 0.63, 0.16), swell: 0.5, swing: -0.3, pivot: [0, 0.416, 0] },
-  { ox: -0.2, oy: 0.192, oz: 0.15, sx: 0.15, sy: 0.449, sz: 0.15, color: C(0.23, 0.63, 0.16), swell: 0.5, swing: -0.3, pivot: [0, 0.416, 0] },
-  { ox: 0.2, oy: 0.192, oz: 0.15, sx: 0.15, sy: 0.449, sz: 0.15, color: C(0.23, 0.63, 0.16), swell: 0.5, swing: 0.3, pivot: [0, 0.416, 0] },
+  // four corner legs — swells on the fuse, subtle step swing; pivot = leg top.
+  // Vanilla creeper gait is a stiff shuffle: small swing (0.15) or the four
+  // touching legs flare into a skirt (audited 2026-09-14: 0.3 read as a
+  // trapezoid skirt in stride frames).
+  { ox: -0.125, oy: 0.1875, oz: -0.125, sx: 0.25, sy: 0.375, sz: 0.25, color: CR_GREEN, swell: 0.5, swing: 0.15 },
+  { ox: 0.125, oy: 0.1875, oz: -0.125, sx: 0.25, sy: 0.375, sz: 0.25, color: CR_GREEN, swell: 0.5, swing: -0.15 },
+  { ox: -0.125, oy: 0.1875, oz: 0.125, sx: 0.25, sy: 0.375, sz: 0.25, color: CR_GREEN, swell: 0.5, swing: -0.15 },
+  { ox: 0.125, oy: 0.1875, oz: 0.125, sx: 0.25, sy: 0.375, sz: 0.25, color: CR_GREEN, swell: 0.5, swing: 0.15 },
+  // body 0.5 x 0.75 x 0.25 (y 0.375..1.125) — swells on the fuse
+  { ox: 0, oy: 0.75, oz: 0, sx: 0.5, sy: 0.75, sz: 0.25, color: CR_GREEN, swell: 0.5 },
+  // mottling: 3 green shades on every face (front, back, both sides, top)
+  // front (z +0.125)
+  { ox: -0.15, oy: 0.95, oz: 0.13, sx: 0.1, sy: 0.14, sz: 0.02, color: CR_DARK, swell: 0.5 },
+  { ox: 0.16, oy: 0.65, oz: 0.13, sx: 0.08, sy: 0.1, sz: 0.02, color: CR_MID, swell: 0.5 },
+  { ox: -0.04, oy: 0.48, oz: 0.13, sx: 0.12, sy: 0.08, sz: 0.02, color: CR_MID, swell: 0.5 },
+  { ox: 0.06, oy: 1.02, oz: 0.13, sx: 0.06, sy: 0.06, sz: 0.02, color: CR_DARK, swell: 0.5 },
+  { ox: 0.02, oy: 0.8, oz: 0.13, sx: 0.08, sy: 0.1, sz: 0.02, color: CR_MID, swell: 0.5 },
+  { ox: -0.18, oy: 0.7, oz: 0.13, sx: 0.06, sy: 0.08, sz: 0.02, color: CR_DARK, swell: 0.5 },
+  { ox: 0.1, oy: 0.42, oz: 0.13, sx: 0.08, sy: 0.06, sz: 0.02, color: CR_MID, swell: 0.5 },
+  // back (z -0.125)
+  { ox: 0.1, oy: 0.9, oz: -0.13, sx: 0.1, sy: 0.12, sz: 0.02, color: CR_MID, swell: 0.5 },
+  { ox: -0.14, oy: 0.55, oz: -0.13, sx: 0.08, sy: 0.1, sz: 0.02, color: CR_DARK, swell: 0.5 },
+  { ox: 0.05, oy: 0.45, oz: -0.13, sx: 0.06, sy: 0.08, sz: 0.02, color: CR_MID, swell: 0.5 },
+  { ox: -0.05, oy: 0.75, oz: -0.13, sx: 0.08, sy: 0.1, sz: 0.02, color: CR_MID, swell: 0.5 },
+  { ox: 0.15, oy: 0.62, oz: -0.13, sx: 0.06, sy: 0.06, sz: 0.02, color: CR_DARK, swell: 0.5 },
+  { ox: -0.1, oy: 1.0, oz: -0.13, sx: 0.08, sy: 0.08, sz: 0.02, color: CR_MID, swell: 0.5 },
+  // left side (x -0.25)
+  { ox: -0.26, oy: 0.85, oz: 0.05, sx: 0.02, sy: 0.12, sz: 0.1, color: CR_MID, swell: 0.5 },
+  { ox: -0.26, oy: 0.5, oz: -0.05, sx: 0.02, sy: 0.1, sz: 0.08, color: CR_DARK, swell: 0.5 },
+  { ox: -0.26, oy: 0.65, oz: 0.0, sx: 0.02, sy: 0.08, sz: 0.06, color: CR_MID, swell: 0.5 },
+  // right side (x +0.25)
+  { ox: 0.26, oy: 0.9, oz: -0.03, sx: 0.02, sy: 0.1, sz: 0.08, color: CR_DARK, swell: 0.5 },
+  { ox: 0.26, oy: 0.55, oz: 0.06, sx: 0.02, sy: 0.12, sz: 0.1, color: CR_MID, swell: 0.5 },
+  { ox: 0.26, oy: 0.7, oz: -0.05, sx: 0.02, sy: 0.08, sz: 0.06, color: CR_MID, swell: 0.5 },
+  // top (y 1.125)
+  { ox: -0.1, oy: 1.135, oz: 0, sx: 0.1, sy: 0.02, sz: 0.1, color: CR_MID, swell: 0.5 },
+  { ox: 0.1, oy: 1.135, oz: 0.05, sx: 0.08, sy: 0.02, sz: 0.08, color: CR_DARK, swell: 0.5 },
+  // head 0.5^3 (y 1.125..1.625) + mottled sides/back — swells on the fuse
+  { ox: 0, oy: 1.375, oz: 0, sx: 0.5, sy: 0.5, sz: 0.5, color: CR_GREEN, swell: 0.5 },
+  { ox: -0.26, oy: 1.45, oz: -0.08, sx: 0.02, sy: 0.12, sz: 0.1, color: CR_MID, swell: 0.5 },
+  { ox: 0.26, oy: 1.3, oz: 0.05, sx: 0.02, sy: 0.1, sz: 0.08, color: CR_DARK, swell: 0.5 },
+  { ox: 0.08, oy: 1.5, oz: -0.26, sx: 0.1, sy: 0.1, sz: 0.02, color: CR_MID, swell: 0.5 },
+  // leg mottling (front faces)
+  { ox: -0.125, oy: 0.15, oz: 0.13, sx: 0.1, sy: 0.08, sz: 0.02, color: CR_DARK, swell: 0.5 },
+  { ox: 0.125, oy: 0.25, oz: 0.13, sx: 0.08, sy: 0.08, sz: 0.02, color: CR_MID, swell: 0.5 },
+  // face on the +z face (head front at z 0.25), vanilla 8x8 grid, 1px = 0.0625.
+  // Decals sit 0.01 proud of the head face (z 0.24..0.26): proud enough to
+  // avoid coplanar z-fighting, thin enough that the side-profile sliver is a
+  // hairline, not a black dot (0.255/0.02 = 0.015 proud audited as a dot).
+  // eyes 2x2 at rows 1-2, frown bar 4x1 at row 4, two 2x2 legs at rows 5-6
+  { ox: -0.1875, oy: 1.53125, oz: 0.25, sx: 0.125, sy: 0.125, sz: 0.02, color: CR_FACE, swell: 0.5 },
+  { ox: 0.1875, oy: 1.53125, oz: 0.25, sx: 0.125, sy: 0.125, sz: 0.02, color: CR_FACE, swell: 0.5 },
+  { ox: 0, oy: 1.34375, oz: 0.25, sx: 0.25, sy: 0.0625, sz: 0.02, color: CR_FACE, swell: 0.5 },
+  { ox: -0.1875, oy: 1.28125, oz: 0.25, sx: 0.125, sy: 0.125, sz: 0.02, color: CR_FACE, swell: 0.5 },
+  { ox: 0.1875, oy: 1.28125, oz: 0.25, sx: 0.125, sy: 0.125, sz: 0.02, color: CR_FACE, swell: 0.5 },
 ];
 
 </script>
