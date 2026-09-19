@@ -119,7 +119,14 @@ const placed = media.map((item, i) => ({
 
       const isCoarse = window.matchMedia('(pointer: coarse)').matches;
 
-      const MIN_SCALE = 0.18;
+      // The floor exists only to stop pinch/wheel-out from magnifying empty
+      // space forever. It must stay BELOW the scale the board needs to fully
+      // fit the smallest real screen: the 2560x3760 canvas fits a 390px phone
+      // at ~0.13, so a floor at 0.18 (the old value) locked the zoom there and
+      // the board could never fully expand out — its edge, and with it the
+      // area behind the top bar, stayed unreachable. 0.05 is below any real
+      // fit scale, so fit is never clamped and out-zoom stays bounded.
+      const MIN_SCALE = 0.05;
       // Tiles are 300px wide; sources are 640px (video) / 900px (photo). Past
       // ~2x a 300px tile renders wider than its 640px source and MUST soften —
       // no encoder setting fixes magnifying beyond the pixels that exist. This
