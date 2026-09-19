@@ -132,7 +132,8 @@ const placed = media.map((item, i) => ({
       // bounds decode cost, and it does so at every zoom level.
       const PLAYBACK_MIN_SCALE = 0;
       // Phones cannot sustain eight simultaneous H.264 decoders. Only the
-      // clips nearest the centre of view are allowed to run.
+      // clips nearest the centre of view are allowed to START — once a clip
+      // has started it keeps looping; the cap never pauses a running clip.
       const MAX_CONCURRENT_VIDEOS = isCoarse ? 2 : 8;
 
       let scale = 1;
@@ -411,7 +412,8 @@ const placed = media.map((item, i) => ({
 
       // --- Playback budget ---------------------------------------------------
       // Only clips that are both on screen and large enough to be worth watching
-      // are allowed to decode. Everything else holds a still frame.
+      // are allowed to START decoding. Once a clip has started it runs forever —
+      // pausing it is what makes iOS Safari drop it to black on re-entry.
       const videoTiles = tiles.filter(t => t.querySelector('video'));
       const onScreen = new Set();
 
@@ -453,17 +455,19 @@ const placed = media.map((item, i) => ({
 
           for (const tile of videoTiles) {
             const video = tile.querySelector('video');
-            const shouldPlay = allowed && winners.has(tile);
-            if (shouldPlay) {
+            // A clip that is already playing is NEVER paused. Pausing makes iOS
+            // Safari drop the decoded frame to black, which is the "goes black,
+            // disappears, reappears every few loops" flicker: the Intersection
+            // Observer fires on every pan, clips swap in/out of the top-N, and
+            // each pause/resume re-decodes from black. The cap only bounds which
+            // clips START — once running, a clip loops forever.
+            const shouldStart = allowed && winners.has(tile);
+            if (video.paused && shouldStart) {
               // The poster already shows the right frame, so clips cleared to
               // play are the only ones that ever pull their file.
               if (video.preload !== 'auto') video.preload = 'auto';
-              if (video.paused) {
-                const p = video.play();
-                if (p && p.catch) p.catch(() => {});
-              }
-            } else if (!video.paused) {
-              video.pause();
+              const p = video.play();
+              if (p && p.catch) p.catch(() => {});
             }
           }
         });
