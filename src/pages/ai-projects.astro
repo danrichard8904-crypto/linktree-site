@@ -230,6 +230,9 @@ const dataJson = JSON.stringify({ base, projects });
       // like they "needed effort" or snapped back.
       let dragging = false, moved = false, startX = 0, startP = 0;
       let samples = []; // [timeStamp, clientX]
+      let downCard = null; // card under the pointer at pointerdown — setPointerCapture
+      // retargets the RELEASE to the stage, so ev.target in endDrag is useless
+      // for hit-testing: the tap branch must use what the pointer went DOWN on.
 
       function softClamp(x) {
         // Rubber-band at the ends: hard clamping stops the drag dead at the
@@ -252,6 +255,7 @@ const dataJson = JSON.stringify({ base, projects });
         if (expanded) return;
         dragging = true; moved = false;
         startX = ev.clientX; startP = p;
+        downCard = ev.target.closest('.card');
         samples = [[ev.timeStamp, ev.clientX]];
         target = null;
         tiltT.x = tiltT.y = 0;
@@ -295,7 +299,7 @@ const dataJson = JSON.stringify({ base, projects });
           // Tap on a card: front card expands, a neighbour glides one step
           // toward front. Taps on empty background do nothing.
           const front = Math.round(p);
-          const el = ev.target.closest('.card');
+          const el = downCard;
           if (!el) return;
           const ci = Number(el.dataset.i);
           if (ci === front) expand(ci);
