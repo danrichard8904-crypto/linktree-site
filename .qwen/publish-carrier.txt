@@ -1,0 +1,6 @@
+publish-carrier
+Reason: qwen-publish-laneA.sh requires every request path to exist at publish time,
+so a commit containing only file deletions cannot be expressed in .publish-request.json.
+This file exists to ride the same commit as the deletion of the duplicated portfolio
+video (hair-20260907-5.mp4 + poster, duplicate of hair-20260820-4.mp4).
+It is referenced by nothing in the site and is safe to delete by hand.
