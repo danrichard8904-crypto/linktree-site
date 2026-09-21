@@ -1,0 +1,12 @@
+---
+// Cloudflare Web Analytics (cookie-free beacon). One site tag covers both
+// origins — register both domains in the dashboard so views are labelled
+// per host. Token from dash.cloudflare.com > Analytics & Logs > Web
+// Analytics > "Add a site" > Beacon script.
+const BEACON_TOKEN = '05fd0b536c1f42d29d546205b92dc488';
+---
+<script
+  defer
+  src="https://static.cloudflareinsights.com/beacon.min.js"
+  data-cf-beacon={`{"token":"${BEACON_TOKEN}"}`}
+></script>
