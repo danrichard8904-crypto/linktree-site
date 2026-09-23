@@ -321,7 +321,7 @@ const T = {
 };
 
 const BLOCKS = {
-  1: { name: 'grass',  tiles: [T.GRASS_TOP, T.GRASS_SIDE, T.GRASS_SIDE, T.DIRT, T.DIRT, T.GRASS_TOP] }, // +x -x +y -y +z -z => top=+y, bottom=-y
+  1: { name: 'grass',  tiles: [T.GRASS_SIDE, T.GRASS_SIDE, T.GRASS_TOP, T.DIRT, T.GRASS_SIDE, T.GRASS_SIDE] }, // +x -x +y -y +z -z => top=+y, bottom=-y, sides=GRASS_SIDE
   2: { name: 'dirt',   tiles: [T.DIRT, T.DIRT, T.DIRT, T.DIRT, T.DIRT, T.DIRT] },
   3: { name: 'stone',  tiles: [T.STONE, T.STONE, T.STONE, T.STONE, T.STONE, T.STONE] },
   4: { name: 'log',    tiles: [T.LOG_SIDE, T.LOG_SIDE, T.LOG_TOP, T.LOG_TOP, T.LOG_SIDE, T.LOG_SIDE] },
@@ -2283,6 +2283,76 @@ class Game {
             }
             } catch (e) { this.testResults.distErr = String(e && e.message || e); }
           }
+          if (this.testTicks === 280) {
+            try {
+            // WS3 (2026-09-22): grass FACE MAPPING at pixel level. One grass
+            // block (id 1) in a cleared, sky-exposed cell; render and readPixels
+            // its top, +x side and bottom faces. greenness = G-R of the 5x5
+            // center mean: grass_block_top is strongly green, the side tile
+            // (dirt base + green top strip) and the dirt bottom tile are ~0.
+            // The 2026-09-22 regression had GRASS_TOP on the +x/-z side slots
+            // and GRASS_SIDE on top, so this row goes FAIL on exactly that.
+            const bx = 18, by = 24, bz = 18;
+            // Clear a cavity: the 3x3 around the block (all faces exposed)
+            // plus a +x tunnel for the side camera. Ceiling opens to the sky
+            // (skylight 15) so every face reads at full light.
+            for (let dx = -1; dx <= 4; dx++)
+              for (let dz = -1; dz <= 1; dz++) {
+                const ceil = Math.max(this.world.surfaceY(bx + dx, bz + dz), by + 6);
+                for (let y = by - 6; y <= ceil; y++) this.world.setBlock(bx + dx, y, bz + dz, 0);
+              }
+            this.world.setBlock(bx, by, bz, 1); // grass
+            this.markEditDirty(bx, bz);
+            while (this.world.dirty.size) {
+              for (const k of [...this.world.dirty]) {
+                const [cx, cz] = k.split(',').map(Number);
+                this.buildMeshFor(cx, cz);
+              }
+            }
+            const gl = this.gl, c = this.canvas;
+            const scx = c.width >> 1, scy = c.height >> 1;
+            const buf = new Uint8Array(5 * 5 * 4);
+            const mean = () => {
+              gl.readPixels(scx - 2, scy - 2, 5, 5, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+              const a = [0, 0, 0];
+              for (let i = 0; i < 25; i++) { a[0] += buf[i * 4]; a[1] += buf[i * 4 + 1]; a[2] += buf[i * 4 + 2]; }
+              return [+(a[0] / 25).toFixed(1), +(a[1] / 25).toFixed(1), +(a[2] / 25).toFixed(1)];
+            };
+            const saved = { pos: [...this.player.pos], vel: [...this.player.vel], keys: { ...this.keys }, yaw: this.player.yaw, pitch: this.player.pitch, ents: this.entities, vr: this.viewRadius };
+            for (const k in this.keys) this.keys[k] = false;
+            this.entities = [];
+            // eye = pos + (0, 1.62, 0); forward = (-sin(yaw)cos p, -sin p, -cos(yaw)cos p).
+            // lookAt derives yaw/pitch so the eye points EXACTLY at a target point
+            // (no hand-trig). The +1.62 eye offset means the eye sits 1.62 above
+            // `pos`, so `probe` subtracts it to back out the right pos. Each eye
+            // is offset from vertical so fwd is never parallel to up [0,1,0]
+            // (which would degenerate lookAt to NaN).
+            const lookAt = (eye, target) => {
+              const dx = target[0] - eye[0], dy = target[1] - eye[1], dz = target[2] - eye[2];
+              const len = Math.hypot(dx, dy, dz);
+              const pitch = Math.asin(Math.max(-1, Math.min(1, -dy / len)));
+              return [Math.atan2(-dx, -dz), pitch];
+            };
+            const probe = (eye, target) => {
+              const [yaw, pitch] = lookAt(eye, target);
+              this.player.pos = [eye[0], eye[1] - 1.62, eye[2]]; this.player.vel = [0, 0, 0];
+              this.player.yaw = yaw; this.player.pitch = pitch;
+              this.render(performance.now());
+              return mean();
+            };
+            // Face centers of the block at (bx,by,bz): it occupies
+            // [bx,bx+1] x [by,by+1] x [bz,bz+1]. Eyes sit well outside the
+            // cleared cavity so the ray only crosses air before the face.
+            const gTop = probe([bx + 0.5, by + 6, bz + 0.1], [bx + 0.5, by + 1, bz + 0.5]);   // down at top
+            const gSide = probe([bx + 4, by + 0.5, bz + 0.5], [bx + 1, by + 0.5, bz + 0.5]);  // across at +x side
+            const gBottom = probe([bx + 0.5, by - 5, bz + 0.9], [bx + 0.5, by, bz + 0.5]);    // up at bottom
+            this.player.pos = saved.pos; this.player.vel = saved.vel;
+            this.player.yaw = saved.yaw; this.player.pitch = saved.pitch;
+            this.entities = saved.ents; this.viewRadius = saved.vr;
+            const gn = (m) => +(m[1] - m[0]).toFixed(1);
+            this.testResults.grass = { top: gTop, side: gSide, bottom: gBottom, gTop: gn(gTop), gSide: gn(gSide), gBottom: gn(gBottom) };
+            } catch (e) { this.testResults.grassErr = String(e && e.message || e); }
+          }
           if (this.testTicks === 60) this.testResults.sunA = JSON.stringify(this.sunDir().map(v => +v.toFixed(3)));
           if (this.testTicks === 240) this.testResults.sunB = JSON.stringify(this.sunDir().map(v => +v.toFixed(3)));
           if (this.testTicks % 200 === 0) this.shootArrow();
@@ -2638,6 +2708,11 @@ function renderTest(g) {
     ['WS3 highlight leaves aimed face lit', r.dist && r.dist.hl && r.dist.hl[0] > 20],
     ['WS3 night dimmer but readable', r.dist && r.dist.night && r.dist.night[0] > 8 && r.dist.night[0] < 0.6 * r.dist.d5[0]],
     ['WS3 dist probe ran', r.dist && !r.distErr],
+    ['WS3 grass top face reads green', r.grass && r.grass.gTop >= 15],
+    ['WS3 grass side face not green-dominant', r.grass && r.grass.gSide < 15],
+    ['WS3 grass bottom face reads dirt', r.grass && r.grass.gBottom < 15],
+    ['WS3 grass top greener than side', r.grass && (r.grass.gTop - r.grass.gSide) >= 10],
+    ['WS3 grass probe ran', r.grass && !r.grassErr],
     ['shot fired', g.testTicks > 200],
     ['day/night clock', g.testTicks >= 60],
     ['fps > 15', g.fps > 15 || g.testTicks < 120],
@@ -2652,6 +2727,8 @@ function renderTest(g) {
   html += `<div>tick ${g.testTicks} · fps ${g.fps} · tri ${g.stats.tri} · chunks ${g.stats.chunks} · ents ${g.stats.entities} · health ${g.health}</div>`;
   if (r.distErr) html += `<div class="fail">distErr: ${r.distErr}</div>`;
   if (r.dist) html += `<div>dist: d5=[${r.dist.d5}] d25=[${r.dist.d25}] d60=[${r.dist.d60}] spread=${r.dist.spread} hl=[${r.dist.hl}] night=[${r.dist.night}]</div>`;
+  if (r.grass) html += `<div>grass: top=[${r.grass.top}] side=[${r.grass.side}] bottom=[${r.grass.bottom}] gTop=${r.grass.gTop} gSide=${r.grass.gSide} gBottom=${r.grass.gBottom}</div>`;
+  if (r.grassErr) html += `<div class="fail">grassErr: ${r.grassErr}</div>`;
   if (r.done) html += `<div class="pass">TEST COMPLETE</div>`;
   lines.innerHTML = html;
   if (r.done) {
