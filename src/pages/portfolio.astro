@@ -111,7 +111,7 @@ const placed = media.map((item, i) => ({
       </div>
     </div>
 
-    <div class="hint" id="hint">Drag to explore · Double-tap a photo to move in</div>
+    <div class="hint" id="hint">Drag to explore · Double-tap or double-click a photo to move in</div>
 
     <script>
       const viewport = document.getElementById('viewport');
@@ -278,32 +278,25 @@ const placed = media.map((item, i) => ({
         glideTo(target, vw / 2 - cx * target, vh / 2 - cy * target, 780);
       }
 
-      // Pointer capture during a drag retargets mouse events to the viewport, so
-      // a dblclick bound to a tile never reaches it. Delegate instead.
-      viewport.addEventListener('dblclick', (e) => {
-        const tile = e.target.closest('.tile');
-        if (!tile) return;
-        e.preventDefault();
-        pushInto(tile);
-      });
-
       // Images and videos are the browser's favourite drag targets. Killing the
       // native drag is what stops a pan turning into "grabbed a photo".
       viewport.addEventListener('dragstart', (e) => e.preventDefault());
 
       // --- Drag to pan -------------------------------------------------------
       let dragging = false;
-      let moved = false;
       let lastX = 0, lastY = 0;
+      let downX = 0, downY = 0;
       const activePointers = new Map();
       let pinchStart = null;
+      let lastTapAt = 0, lastTapX = 0, lastTapY = 0;
 
       viewport.addEventListener('pointerdown', (e) => {
         e.preventDefault();
         activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
         if (activePointers.size === 1) {
           dragging = true;
-          moved = false;
+          downX = e.clientX;
+          downY = e.clientY;
           lastX = e.clientX;
           lastY = e.clientY;
           viewport.setPointerCapture(e.pointerId);
@@ -317,12 +310,11 @@ const placed = media.map((item, i) => ({
 
         // A second finger converts the gesture to a pinch. Stop treating it as
         // a drag so the two handlers cannot both move the board in one frame.
-        if (activePointers.size >= 2) { dragging = false; handlePinch(); return; }
+        if (activePointers.size >= 2) { dragging = false; lastTapAt = 0; handlePinch(); return; }
         if (!dragging || animating) return;
 
         const dx = e.clientX - lastX;
         const dy = e.clientY - lastY;
-        if (Math.abs(dx) > 2 || Math.abs(dy) > 2) moved = true;
         tx += dx;
         ty += dy;
         lastX = e.clientX;
@@ -392,13 +384,19 @@ const placed = media.map((item, i) => ({
         wheelSettle = setTimeout(syncPlayback, 140);
       }, { passive: false });
 
-      // --- Double-tap (touch) ------------------------------------------------
-      let lastTapAt = 0, lastTapX = 0, lastTapY = 0;
+      // --- Double-click / double-tap -----------------------------------------
+      // One detector for every pointer type. The native dblclick event never
+      // fires here: pointerdown's preventDefault() kills the click chain, and
+      // setPointerCapture retargets mouse events to the viewport. So the second
+      // tap/click is recognised manually: a quick re-tap at the same spot, with
+      // no meaningful drift between down and up, zooms into the tile under it.
       viewport.addEventListener('pointerup', (e) => {
-        if (e.pointerType === 'mouse' || moved) return;
+        if (activePointers.size > 0) return; // a pinch is still resolving
+        const drift = Math.hypot(e.clientX - downX, e.clientY - downY);
+        if (drift > 8) return; // it was a drag, not a tap
         const now = performance.now();
-        const near = Math.hypot(e.clientX - lastTapX, e.clientY - lastTapY) < 30;
-        if (now - lastTapAt < 320 && near) {
+        const near = Math.hypot(e.clientX - lastTapX, e.clientY - lastTapY) < 40;
+        if (now - lastTapAt < 450 && near) {
           const el = document.elementFromPoint(e.clientX, e.clientY);
           const tile = el && el.closest('.tile');
           if (tile) pushInto(tile);
