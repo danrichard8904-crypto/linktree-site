@@ -1557,19 +1557,34 @@ class Game {
 
       e.vel[1] -= 24 * dt;
       const hs = Math.hypot(e.vel[0], e.vel[2]); // horizontal speed
-      if (hs > 0.15) e.phase += dt * hs * 5.0; // walk-cycle advances with speed
       e.pos[0] += e.vel[0] * dt;
       e.pos[1] += e.vel[1] * dt;
       e.pos[2] += e.vel[2] * dt;
       const gy = this.world.surfaceY(Math.floor(e.pos[0]), Math.floor(e.pos[2])) + 1;
       if (e.pos[1] <= gy + 0.05 && e.vel[1] <= 0) { e.pos[1] = gy; e.vel[1] = 0; }
+      e.wallCd = Math.max(0, (e.wallCd || 0) - dt);
+      let hitWall = null;
       for (const [ox, oz] of [[-0.3, 0], [0.3, 0], [0, -0.3], [0, 0.3], [0.3, 0.3], [-0.3, -0.3], [0.3, -0.3], [-0.3, 0.3]]) {
         const bx = Math.floor(e.pos[0] + ox), by = Math.floor(e.pos[1] + 0.4), bz = Math.floor(e.pos[2] + oz);
-        if (this.world.solid(bx, by, bz) || this.world.solid(bx, by + 1, bz)) {
-          e.pos[0] -= e.vel[0] * dt * 2; e.pos[2] -= e.vel[2] * dt * 2;
-          e.yaw += Math.PI; break;
+        if (this.world.solid(bx, by, bz) || this.world.solid(bx, by + 1, bz)) { hitWall = [ox, oz]; break; }
+      }
+      if (hitWall) {
+        // Exact rollback to the pre-move position (a 2x pushback overshot a full
+        // frame of travel, so the mob vibrated on the wall face every frame).
+        e.pos[0] -= e.vel[0] * dt; e.pos[2] -= e.vel[2] * dt;
+        // Turn once per contact episode toward the escape side, not every frame
+        // (the per-frame 180° yaw flip is what made models spazz front-to-back).
+        // Passives only: their yaw IS their steering, so they need a new heading.
+        // Hostiles (zombie/creeper) are re-aimed at the player by their AI every
+        // frame, so an escape flip would just spazz them between two headings.
+        if (e.wallCd <= 0 && (e.type === 'cow' || e.type === 'pig')) {
+          const nx = hitWall[0] !== 0 ? -Math.sign(hitWall[0]) : 0;
+          const nz = hitWall[1] !== 0 ? -Math.sign(hitWall[1]) : 0;
+          if (nx || nz) e.yaw = Math.atan2(nx, nz);
+          e.wallCd = 0.6;
         }
       }
+      if (hs > 0.15 && !hitWall) e.phase += dt * hs * 5.0; // walk-cycle advances with speed, not while pinned
       if (dist > 48 || e.pos[1] < -10) this.entities.splice(i, 1);
     }
     // maintain animal population
