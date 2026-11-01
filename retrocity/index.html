@@ -111,6 +111,27 @@ body {
 
 		<script src="index.js"></script>
 		<script>
+(function () {
+	// Godot 4 web export is not supported on Apple WebKit (Safari on macOS/iOS,
+	// Chrome/Firefox on iPhone/iPad) — engine stalls at the loading bar with no
+	// error. Detect up front and show a fallback instead of booting the engine.
+	var noWasm = typeof WebAssembly === 'undefined';
+	var appleWebkit = (navigator.vendor || '') === 'Apple Computer, Inc.';
+	var ua = navigator.userAgent || '';
+	var isSafari = /Safari/i.test(ua) && !/Chrome|Android|CriOS|FxiOS|Edg|SamsungBrowser|OPR/i.test(ua);
+	if (appleWebkit || isSafari || noWasm) {
+		document.getElementById('status-splash').style.display = 'none';
+		document.getElementById('status').style.visibility = 'visible';
+		var notice = document.getElementById('status-notice');
+		notice.style.display = 'block';
+		notice.textContent = 'RETROCITY needs a desktop or Android browser. It can\u2019t run on Apple devices (iPhone, iPad, Mac Safari) yet \u2014 open it in Chrome, Edge, or Firefox on a PC or Android phone.';
+		var back = document.createElement('a');
+		back.href = '../ai-projects/';
+		back.textContent = 'Back to the project page';
+		back.style.cssText = 'display:inline-block;margin-top:.75rem;color:#fff;text-decoration:underline;';
+		notice.appendChild(back);
+		return;
+	}
 const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":118244,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
@@ -210,11 +231,12 @@ const engine = new Engine(GODOT_CONFIG);
 				}
 			},
 		}).then(() => {
-			setStatusMode('hidden');
-		}, displayFailureNotice);
-	}
-}());
-		</script>
+				setStatusMode('hidden');
+			}, displayFailureNotice);
+		}
+		}());
+		})();
+				</script>
 	</body>
 </html>
 
